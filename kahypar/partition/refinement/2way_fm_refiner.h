@@ -188,7 +188,7 @@ class TwoWayFMRefiner final : public IRefiner,
 
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
-      activate<true>(hn, max_allowed_part_weights);
+      activate(hn, max_allowed_part_weights);
 
       // If Lmax0==Lmax1, then all border nodes should be active. However, if Lmax0 != Lmax1,
       // because k!=2^x or we intend to further partition the hypergraph into unequal number of
