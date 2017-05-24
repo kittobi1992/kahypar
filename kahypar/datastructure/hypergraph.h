@@ -401,13 +401,13 @@ class GenericHypergraph {
    */
   struct Memento {
     // ! The representative hypernode that remains in the hypergraph
-    const HypernodeID u;
+    HypernodeID u;
     // ! The stating index of u's incidence structure before contraction
-    const HypernodeID u_first_entry;
+    HypernodeID u_first_entry;
     // ! The size of u's incidence structure before contraction
-    const HypernodeID u_size;
+    HypernodeID u_size;
     // ! The contraction partner of u that is removed from the hypergraph after the contraction.
-    const HypernodeID v;
+    HypernodeID v;
   };
 
 
@@ -792,7 +792,6 @@ class GenericHypergraph {
     ASSERT(!hypernode(v).isDisabled(), "Hypernode" << v << "is disabled");
     ASSERT(partID(u) == partID(v), "Hypernodes" << u << "&" << v << "are in different parts: "
                                                 << partID(u) << "&" << partID(v));
-
     DBG << "contracting (" << u << "," << v << ")";
 
     hypernode(u).setWeight(hypernode(u).weight() + hypernode(v).weight());
@@ -864,11 +863,10 @@ class GenericHypergraph {
                   meta::Int2Type<static_cast<int>(RefinementAlgorithm::twoway_fm)>) {  // NOLINT
     ASSERT(!hypernode(memento.u).isDisabled(), "Hypernode" << memento.u << "is disabled");
     ASSERT(hypernode(memento.v).isDisabled(), "Hypernode" << memento.v << "is not invalid");
-    ASSERT(changes.representative.size() == 1, V(changes.representative.size()));
-    ASSERT(changes.contraction_partner.size() == 1, V(changes.contraction_partner.size()));
+    ASSERT(changes.representative.size() == changes.contraction_partner.size());
 
-    HyperedgeWeight& changes_u = changes.representative[0];
-    HyperedgeWeight& changes_v = changes.contraction_partner[0];
+    std::pair<HypernodeID, HyperedgeWeight> changes_u = std::make_pair(memento.u, 0);
+    std::pair<HypernodeID, HyperedgeWeight> changes_v = std::make_pair(memento.v, 0);
 
     DBG << "uncontracting (" << memento.u << "," << memento.v << ")";
     hypernode(memento.v).enable();
@@ -894,11 +892,11 @@ class GenericHypergraph {
         // because they initially were only connected to u before the contraction.
         if (connectivity(he) > 1) {
           // because after uncontraction v is not connected to that HE anymore
-          changes_v -= pinCountInPart(he, partID(memento.u)) == 1 ? edgeWeight(he) : 0;
+          changes_v.second -= pinCountInPart(he, partID(memento.u)) == 1 ? edgeWeight(he) : 0;
         } else {
           // because after uncontraction v is not connected to that HE anymore
           ASSERT(pinCountInPart(he, partID(memento.u)) > 1, "Found Single-Node HE!");
-          changes_v += edgeWeight(he);
+          changes_v.second += edgeWeight(he);
         }
       }
       // Those HEs actually contained u and therefore will result in a Case 1 undo operation.
@@ -919,11 +917,11 @@ class GenericHypergraph {
             --hypernode(memento.u).num_incident_cut_hes;    // because u is not connected to that cut HE anymore
             ++hypernode(memento.v).num_incident_cut_hes;    // because v is connected to that cut HE
             // because after uncontraction, u is not connected to that HE anymore
-            changes_u -= pinCountInPart(he, partID(memento.u)) == 1 ? edgeWeight(he) : 0;
+            changes_u.second -= pinCountInPart(he, partID(memento.u)) == 1 ? edgeWeight(he) : 0;
           } else {
             // because after uncontraction, u is not connected to that HE anymore
             ASSERT(pinCountInPart(he, partID(memento.u)) > 1, "Found Single-Node HE!");
-            changes_u += edgeWeight(he);
+            changes_u.second += edgeWeight(he);
           }
           // The state of this hyperedge now resembles the state before contraction.
           // Thus we don't need to process them any further.
@@ -949,6 +947,14 @@ class GenericHypergraph {
       if (!_hes_not_containing_u[he]) {
         DBG << "increasing size of HE" << he;
         ASSERT(!hyperedge(he).isDisabled(), "Hyperedge" << he << "is disabled");
+
+        auto it = _incidence_array.begin() + hyperedge(he).firstInvalidEntry();
+        auto first_invalid = it;
+        while (*it != memento.v) {
+          ++it;
+        }
+        std::iter_swap(it, first_invalid);
+
         hyperedge(he).incrementSize();
         incrementPinCountInPart(he, partID(memento.v));
         ASSERT(_incidence_array[hyperedge(he).firstInvalidEntry() - 1] == memento.v,
@@ -964,12 +970,15 @@ class GenericHypergraph {
         // was not present before uncontraction, because it was a removed single-node HE
         // In both cases, there is no positive gain anymore, because the HE can't be removed
         // from the cut or a move now would result in a new cut edge.
-        changes_u -= pinCountInPart(he, partID(memento.u)) == 2 ? edgeWeight(he) : 0;
-        changes_v -= pinCountInPart(he, partID(memento.u)) == 2 ? edgeWeight(he) : 0;
+        changes_u.second -= pinCountInPart(he, partID(memento.u)) == 2 ? edgeWeight(he) : 0;
+        changes_v.second -= pinCountInPart(he, partID(memento.u)) == 2 ? edgeWeight(he) : 0;
 
         ++_current_num_pins;
       }
     }
+
+    changes.representative.push_back(changes_u);
+    changes.contraction_partner.push_back(changes_v);
 
     ASSERT(hypernode(memento.u).num_incident_cut_hes == numIncidentCutHEs(memento.u),
            V(memento.u) << V(hypernode(memento.u).num_incident_cut_hes)
@@ -1049,6 +1058,14 @@ class GenericHypergraph {
       if (!_hes_not_containing_u[he]) {
         DBG << "increasing size of HE" << he;
         ASSERT(!hyperedge(he).isDisabled(), "Hyperedge" << he << "is disabled");
+
+        auto it = _incidence_array.begin() + hyperedge(he).firstInvalidEntry();
+        auto first_invalid = it;
+        while (*it != memento.v) {
+          ++it;
+        }
+        std::iter_swap(it, first_invalid);
+
         hyperedge(he).incrementSize();
         incrementPinCountInPart(he, partID(memento.v));
         ASSERT(_incidence_array[hyperedge(he).firstInvalidEntry() - 1] == memento.v,
@@ -1292,19 +1309,28 @@ class GenericHypergraph {
     enableEdge(he);
     resetPartitionPinCounts(he);
     for (const HypernodeID& pin : pins(he)) {
-      ASSERT(std::count(_incidence_array.begin() + hypernode(pin).firstEntry(),
-                        _incidence_array.begin() + hypernode(pin).firstInvalidEntry(), he)
-             == 0,
-             "HN" << pin << "is already connected to HE" << he);
-      DBG << "re-adding pin" << pin << "to HE" << he;
-      hypernode(pin).incrementSize();
-      if (partID(pin) != kInvalidPartition) {
-        incrementPinCountInPart(he, partID(pin));
-      }
+      if (!hypernode(pin).isDisabled()) {
+        ASSERT(std::count(_incidence_array.begin() + hypernode(pin).firstEntry(),
+                          _incidence_array.begin() + hypernode(pin).firstInvalidEntry(), he)
+               == 0,
+               "HN" << pin << "is already connected to HE" << he);
+        DBG << "re-adding pin" << pin << "to HE" << he;
 
-      ASSERT(_incidence_array[hypernode(pin).firstInvalidEntry() - 1] == he,
-             "Incorrect restore of HE" << he);
-      ++_current_num_pins;
+        auto it = _incidence_array.begin() + hypernode(pin).firstInvalidEntry();
+        auto first_invalid = it;
+        while (*it != he) {
+          ++it;
+        }
+        std::iter_swap(it, first_invalid);
+        hypernode(pin).incrementSize();
+        if (partID(pin) != kInvalidPartition) {
+          incrementPinCountInPart(he, partID(pin));
+        }
+
+        ASSERT(_incidence_array[hypernode(pin).firstInvalidEntry() - 1] == he,
+               "Incorrect restore of HE" << he);
+        ++_current_num_pins;
+      }
     }
   }
 

@@ -52,6 +52,7 @@ class CoarsenerBase {
     _hg(hypergraph),
     _context(context),
     _history(),
+    _contraction_paths(_hg.initialNumNodes()),
     _max_hn_weights(),
     _hypergraph_pruner(_hg.initialNumNodes()) {
     _history.reserve(_hg.initialNumNodes());
@@ -71,12 +72,15 @@ class CoarsenerBase {
  protected:
   void performContraction(const HypernodeID rep_node, const HypernodeID contracted_node) {
     _history.emplace_back(_hg.contract(rep_node, contracted_node));
+    removeSingleNodeHyperedges();
+    removeParallelHyperedges();
+    _contraction_paths[rep_node].emplace_back(_history.back());
     if (_hg.nodeWeight(rep_node) > _max_hn_weights.back().max_weight) {
       _max_hn_weights.emplace_back(CurrentMaxNodeWeight { _hg.currentNumNodes(),
                                                           _hg.nodeWeight(rep_node) });
     }
-    removeSingleNodeHyperedges();
-    removeParallelHyperedges();
+    // removeSingleNodeHyperedges();
+    // removeParallelHyperedges();
   }
 
   void removeSingleNodeHyperedges() {
@@ -86,14 +90,23 @@ class CoarsenerBase {
   }
 
   void removeParallelHyperedges() {
-    const HyperedgeID removed_parallel_hes =
-      _hypergraph_pruner.removeParallelHyperedges(_hg, _history.back());
-    _context.stats.coarsening("numRemovedParalellHEs") += removed_parallel_hes;
+    // const HyperedgeID removed_parallel_hes =
+    //   _hypergraph_pruner.removeParallelHyperedges(_hg, _history.back());
+    // _context.stats.coarsening("numRemovedParalellHEs") += removed_parallel_hes;
   }
 
   void restoreParallelHyperedges() {
-    _hypergraph_pruner.restoreParallelHyperedges(_hg, _history.back());
+    // _hypergraph_pruner.restoreParallelHyperedges(_hg, _history.back());
   }
+
+  void restoreParallelHyperedges(const CoarseningMemento& memento) {
+    // _hypergraph_pruner.restoreParallelHyperedges(_hg, memento);
+  }
+
+  void restoreSingleNodeHyperedges(const CoarseningMemento& memento) {
+    _hypergraph_pruner.restoreSingleNodeHyperedges(_hg, memento);
+  }
+
 
   void restoreSingleNodeHyperedges() {
     _hypergraph_pruner.restoreSingleNodeHyperedges(_hg, _history.back());
@@ -120,13 +133,9 @@ class CoarsenerBase {
   void performLocalSearch(IRefiner& refiner, std::vector<HypernodeID>& refinement_nodes,
                           Metrics& current_metrics,
                           const UncontractionGainChanges& changes) {
-    ASSERT(changes.representative.size() != 0, "0");
-    ASSERT(changes.contraction_partner.size() != 0, "0");
     bool improvement_found = performLocalSearchIteration(refiner, refinement_nodes, changes,
                                                          current_metrics);
     UncontractionGainChanges no_changes;
-    no_changes.representative.push_back(0);
-    no_changes.contraction_partner.push_back(0);
 
     int iteration = 1;
     while ((iteration < _context.local_search.iterations_per_level) && improvement_found) {
@@ -168,6 +177,7 @@ class CoarsenerBase {
   Hypergraph& _hg;
   const Context& _context;
   std::vector<CoarseningMemento> _history;
+  std::vector<std::vector<CoarseningMemento> > _contraction_paths;
   std::vector<CurrentMaxNodeWeight> _max_hn_weights;
   HypergraphPruner _hypergraph_pruner;
 };

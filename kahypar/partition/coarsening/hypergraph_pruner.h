@@ -72,7 +72,7 @@ class HypergraphPruner {
       DBG << "restore single-node HE "
           << _removed_single_node_hyperedges[i];
       hypergraph.restoreEdge(_removed_single_node_hyperedges[i]);
-      _removed_single_node_hyperedges.pop_back();
+      // _removed_single_node_hyperedges.pop_back();
     }
   }
 
@@ -90,7 +90,7 @@ class HypergraphPruner {
       hypergraph.setEdgeWeight(_removed_parallel_hyperedges[i].representative_id,
                                hypergraph.edgeWeight(_removed_parallel_hyperedges[i].representative_id) -
                                hypergraph.edgeWeight(_removed_parallel_hyperedges[i].removed_id));
-      _removed_parallel_hyperedges.pop_back();
+      // _removed_parallel_hyperedges.pop_back();
     }
   }
 

@@ -78,12 +78,18 @@ class TwoWayFMRefiner final : public IRefiner,
   TwoWayFMRefiner(TwoWayFMRefiner&&) = delete;
   TwoWayFMRefiner& operator= (TwoWayFMRefiner&&) = delete;
 
+  template <bool invalidate_hn = false>
   void activate(const HypernodeID hn,
                 const HypernodeWeightArray& max_allowed_part_weights) {
+    if (invalidate_hn) {
+      _gain_cache.setValue(hn, computeGain(hn));
+    }
+
     if (_hg.isBorderNode(hn)) {
       ASSERT(!_hg.active(hn), V(hn));
       ASSERT(!_hg.marked(hn), V(hn));
       ASSERT(!_pq.contains(hn, 1 - _hg.partID(hn)), V(hn));
+
       ASSERT(_gain_cache.value(hn) == computeGain(hn), V(hn)
              << V(_gain_cache.value(hn)) << V(computeGain(hn)));
 
@@ -161,18 +167,28 @@ class TwoWayFMRefiner final : public IRefiner,
 
     // Will always be the case in the first FM pass, since the just uncontracted HN
     // was not seen before.
-    ASSERT(changes.representative.size() == 1, V(changes.representative.size()));
-    ASSERT(changes.contraction_partner.size() == 1, V(changes.contraction_partner.size()));
-    if (!_gain_cache.isCached(refinement_nodes[1]) && _gain_cache.isCached(refinement_nodes[0])) {
-      // In further FM passes, changes will be set to 0 by the caller.
-      _gain_cache.setValue(refinement_nodes[1], _gain_cache.value(refinement_nodes[0])
-                           + changes.contraction_partner[0]);
-      _gain_cache.updateValue(refinement_nodes[0], changes.representative[0]);
+    ASSERT(changes.representative.size() == changes.contraction_partner.size());
+    for (size_t i = 0; i < changes.contraction_partner.size(); ++i) {
+      const auto& changes_v = changes.contraction_partner[i];
+      const auto& changes_u = changes.representative[i];
+      if (!_gain_cache.isCached(changes_v.first) && _gain_cache.isCached(changes_u.first)) {
+        // In further FM passes, changes will be set to 0 by the caller.
+        _gain_cache.setValue(changes_v.first, _gain_cache.value(changes_u.first)
+                             + changes_v.second);
+        _gain_cache.updateValue(changes_u.first, changes_u.second);
+      }
     }
+
+    // if (!_gain_cache.isCached(refinement_nodes[1]) && _gain_cache.isCached(refinement_nodes[0])) {
+    //   // In further FM passes, changes will be set to 0 by the caller.
+    //   _gain_cache.setValue(refinement_nodes[1], _gain_cache.value(refinement_nodes[0])
+    //                        + changes.contraction_partner[0]);
+    //   _gain_cache.updateValue(refinement_nodes[0], changes.representative[0]);
+    // }
 
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
-      activate(hn, max_allowed_part_weights);
+      activate<true>(hn, max_allowed_part_weights);
 
       // If Lmax0==Lmax1, then all border nodes should be active. However, if Lmax0 != Lmax1,
       // because k!=2^x or we intend to further partition the hypergraph into unequal number of

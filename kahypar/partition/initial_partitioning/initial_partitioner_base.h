@@ -129,8 +129,6 @@ class InitialPartitionerBase {
       int iteration = 0;
 
       UncontractionGainChanges changes;
-      changes.representative.push_back(0);
-      changes.contraction_partner.push_back(0);
 
       do {
         refinement_nodes.clear();

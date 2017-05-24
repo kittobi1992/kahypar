@@ -65,6 +65,35 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
  protected:
   FRIEND_TEST(ACoarsener, SelectsNodePairToContractBasedOnHighestRating);
 
+  void uncontractPath(const HypernodeID start_hn, std::vector<HypernodeID>& path_nodes,
+                      UncontractionGainChanges& changes) {
+    while (!_contraction_paths[start_hn].empty()) {
+      const CoarseningMemento& memento = _contraction_paths[start_hn].back();
+      path_nodes.push_back(memento.contraction_memento.v);
+      _contraction_paths[start_hn].pop_back();
+      restoreParallelHyperedges(memento);
+      restoreSingleNodeHyperedges(memento);
+      DBG << "Uncontracting: (" << memento.contraction_memento.u << ","
+          << memento.contraction_memento.v << ")";
+      if (_context.local_search.algorithm == RefinementAlgorithm::twoway_fm) {
+        _hg.uncontract(memento.contraction_memento, changes,
+                       meta::Int2Type<static_cast<int>(RefinementAlgorithm::twoway_fm)>());
+      } else {
+        _hg.uncontract(memento.contraction_memento);
+      }
+      uncontractPath(memento.contraction_memento.v, path_nodes, changes);
+    }
+  }
+
+  void printUncontractionPath(const HypernodeID start_hn) {
+    const auto& contraction_path = _contraction_paths[start_hn];
+    for (auto it = contraction_path.crbegin(); it != contraction_path.crend(); ++it) {
+      const CoarseningMemento& memento = *it;
+      LLOG << "(" << memento.contraction_memento.u << "," << memento.contraction_memento.v << ")" << "--";
+      printUncontractionPath(memento.contraction_memento.v);
+    }
+  }
+
   bool doUncoarsen(IRefiner& refiner) {
     Metrics current_metrics = { metrics::hyperedgeCut(_hg),
                                 metrics::km1(_hg),
@@ -88,36 +117,37 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     _context.stats.initialPartitioning("initialImbalance") = current_metrics.imbalance;
 
     initializeRefiner(refiner);
-    std::vector<HypernodeID> refinement_nodes(2, 0);
+    std::vector<HypernodeID> refinement_nodes;
     UncontractionGainChanges changes;
-    changes.representative.push_back(0);
-    changes.contraction_partner.push_back(0);
-    while (!_history.empty()) {
-      restoreParallelHyperedges();
-      restoreSingleNodeHyperedges();
+    changes.representative.reserve(_context.coarsening.max_allowed_node_weight);
+    changes.contraction_partner.reserve(_context.coarsening.max_allowed_node_weight);
 
-      DBG << "Uncontracting: (" << _history.back().contraction_memento.u << ","
-          << _history.back().contraction_memento.v << ")";
+    std::vector<HypernodeID> root_nodes;
+    root_nodes.reserve(_hg.currentNumNodes());
+    for (const HypernodeID& hn : _hg.nodes()) {
+      root_nodes.push_back(hn);
+    }
 
+    for (const HypernodeID& hn : root_nodes) {
       refinement_nodes.clear();
-      refinement_nodes.push_back(_history.back().contraction_memento.u);
-      refinement_nodes.push_back(_history.back().contraction_memento.v);
+      refinement_nodes.push_back(hn);
+      // DBG << "Uncontraction Path for HN" << hn;
+      // printUncontractionPath(hn);
+      // DBG << "";
+      uncontractPath(hn, refinement_nodes, changes);
+
+      // DBG << "refinement nodes for HN" << hn;
+      // for (const auto& ref_node : refinement_nodes) {
+      //   LLOG << ref_node;
+      // }
+      // LOG << "";
 
       if (_hg.currentNumNodes() > _max_hn_weights.back().num_nodes) {
         _max_hn_weights.pop_back();
       }
-
-      if (_context.local_search.algorithm == RefinementAlgorithm::twoway_fm) {
-        _hg.uncontract(_history.back().contraction_memento, changes,
-                       meta::Int2Type<static_cast<int>(RefinementAlgorithm::twoway_fm)>());
-      } else {
-        _hg.uncontract(_history.back().contraction_memento);
-      }
-
       performLocalSearch(refiner, refinement_nodes, current_metrics, changes);
-      changes.representative[0] = 0;
-      changes.contraction_partner[0] = 0;
-      _history.pop_back();
+      changes.representative.clear();
+      changes.contraction_partner.clear();
     }
 
     // This currently cannot be guaranteed for RB-partitioning and k != 2^x, since it might be
@@ -179,6 +209,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
 
   using CoarsenerBase::_hg;
   using CoarsenerBase::_context;
+  using CoarsenerBase::_contraction_paths;
   PrioQueue _pq;
 };
 }  // namespace kahypar

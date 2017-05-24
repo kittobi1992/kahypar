@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <utility>
 #include <vector>
 
 #include "kahypar/definitions.h"
@@ -36,7 +37,7 @@ struct UncontractionGainChanges {
   UncontractionGainChanges& operator= (const UncontractionGainChanges&) = delete;
   UncontractionGainChanges& operator= (UncontractionGainChanges&&) = delete;
 
-  std::vector<Gain> representative;
-  std::vector<Gain> contraction_partner;
+  std::vector<std::pair<HypernodeID, Gain> > representative;
+  std::vector<std::pair<HypernodeID, Gain> > contraction_partner;
 };
 }  // namespace kahypar

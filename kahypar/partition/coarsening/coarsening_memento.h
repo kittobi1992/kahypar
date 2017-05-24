@@ -36,6 +36,6 @@ class CoarseningMemento {
   int one_pin_hes_size;         // # removed single pin hyperedges
   int parallel_hes_begin;       // start of removed parallel hyperedges
   int parallel_hes_size;        // # removed parallel hyperedges
-  const Hypergraph::ContractionMemento contraction_memento;
+  Hypergraph::ContractionMemento contraction_memento;
 };
 }  // namespace kahypar
