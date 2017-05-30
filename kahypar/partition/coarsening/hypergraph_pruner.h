@@ -93,6 +93,7 @@ class HypergraphPruner {
                                hypergraph.edgeWeight(_removed_parallel_hyperedges[i].representative_id) -
                                hypergraph.edgeWeight(_removed_parallel_hyperedges[i].removed_id));
     }
+    _indirection[hn] = {0, 0};
   }
 
   HyperedgeWeight removeSingleNodeHyperedges(Hypergraph& hypergraph,
