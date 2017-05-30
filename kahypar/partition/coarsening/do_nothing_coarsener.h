@@ -38,6 +38,7 @@ class DoNothingCoarsener final : public ICoarsener {
   ~DoNothingCoarsener() override = default;
 
  private:
+  void removeParallelHyperedgesImpl() override final { }
   void coarsenImpl(const HypernodeID) override { }
   bool uncoarsenImpl(IRefiner&) override { return false; }
 };

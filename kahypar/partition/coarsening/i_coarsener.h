@@ -37,6 +37,7 @@ class ICoarsener {
 
   void coarsen(const HypernodeID limit) {
     coarsenImpl(limit);
+    removeParallelHyperedgesImpl();
   }
 
   bool uncoarsen(IRefiner& refiner) {
@@ -49,6 +50,7 @@ class ICoarsener {
   ICoarsener() = default;
 
  private:
+  virtual void removeParallelHyperedgesImpl() = 0;
   virtual void coarsenImpl(HypernodeID limit) = 0;
   virtual bool uncoarsenImpl(IRefiner& refiner) = 0;
 };

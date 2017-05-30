@@ -73,6 +73,10 @@ class LazyVertexPairCoarsener final : public ICoarsener,
  private:
   FRIEND_TEST(ALazyUpdateCoarsener, InvalidatesAdjacentHypernodesInsteadOfReratingThem);
 
+  void removeParallelHyperedgesImpl() override final {
+    Base::removeParallelHyperedges();
+  }
+
   void coarsenImpl(const HypernodeID limit) override final {
     _pq.clear();
 

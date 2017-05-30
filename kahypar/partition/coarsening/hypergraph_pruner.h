@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "kahypar/datastructure/fast_reset_flag_array.h"
@@ -51,6 +52,7 @@ class HypergraphPruner {
  public:
   explicit HypergraphPruner(const HypernodeID max_num_nodes) :
     _removed_single_node_hyperedges(),
+    _indirection(max_num_nodes, { 0, 0 }),
     _removed_parallel_hyperedges(),
     _fingerprints(),
     _contained_hypernodes(max_num_nodes) { }
@@ -77,9 +79,9 @@ class HypergraphPruner {
   }
 
   void restoreParallelHyperedges(Hypergraph& hypergraph,
-                                 const CoarseningMemento& memento) {
-    for (int i = memento.parallel_hes_begin + memento.parallel_hes_size - 1;
-         i >= memento.parallel_hes_begin; --i) {
+                                 const HypernodeID hn) {
+    for (int i = _indirection[hn].first + _indirection[hn].second - 1;
+         i >= _indirection[hn].first; --i) {
       ASSERT(i >= 0 && static_cast<size_t>(i) < _removed_parallel_hyperedges.size(),
              "Index out of bounds:" << i);
       DBG << "restore HE "
@@ -90,7 +92,6 @@ class HypergraphPruner {
       hypergraph.setEdgeWeight(_removed_parallel_hyperedges[i].representative_id,
                                hypergraph.edgeWeight(_removed_parallel_hyperedges[i].representative_id) -
                                hypergraph.edgeWeight(_removed_parallel_hyperedges[i].removed_id));
-      // _removed_parallel_hyperedges.pop_back();
     }
   }
 
@@ -125,11 +126,10 @@ class HypergraphPruner {
   // This check is only performed, if the sizes of both HEs match - otherwise they can't be
   // parallel. In case we detect a parallel HE, it is removed from the graph and we proceed by
   // checking if there are more fingerprints with the same hash value.
-  HyperedgeID removeParallelHyperedges(Hypergraph& hypergraph,
-                                       CoarseningMemento& memento) {
-    memento.parallel_hes_begin = _removed_parallel_hyperedges.size();
+  HyperedgeID removeParallelHyperedges(Hypergraph& hypergraph, const HypernodeID hn) {
+    _indirection[hn].first = _removed_parallel_hyperedges.size();
 
-    createFingerprints(hypergraph, memento.contraction_memento.u, memento.contraction_memento.v);
+    createFingerprints(hypergraph, hn);
     std::sort(_fingerprints.begin(), _fingerprints.end(),
               [](const Fingerprint& a, const Fingerprint& b) { return a.hash < b.hash; });
 
@@ -167,7 +167,7 @@ class HypergraphPruner {
               removed_parallel_hes += 1;
               removeParallelHyperedge(hypergraph, _fingerprints[i].id, _fingerprints[j].id);
               _fingerprints[j].id = kInvalidID;
-              ++memento.parallel_hes_size;
+              ++_indirection[hn].second;
             }
           }
           ++j;
@@ -180,15 +180,15 @@ class HypergraphPruner {
 
 
     ASSERT([&]() {
-        for (auto edge_it = hypergraph.incidentEdges(memento.contraction_memento.u).first;
-             edge_it != hypergraph.incidentEdges(memento.contraction_memento.u).second; ++edge_it) {
+        for (auto edge_it = hypergraph.incidentEdges(hn).first;
+             edge_it != hypergraph.incidentEdges(hn).second; ++edge_it) {
           _contained_hypernodes.reset();
           for (const HypernodeID& pin : hypergraph.pins(*edge_it)) {
             _contained_hypernodes.set(pin, 1);
           }
 
           for (auto next_edge_it = edge_it + 1;
-               next_edge_it != hypergraph.incidentEdges(memento.contraction_memento.u).second;
+               next_edge_it != hypergraph.incidentEdges(hn).second;
                ++next_edge_it) {
             // size check is necessary. Otherwise we might iterate over the pins of a small HE that
             // is completely contained in a larger one and think that both are parallel.
@@ -244,28 +244,13 @@ class HypergraphPruner {
     _removed_parallel_hyperedges.emplace_back(ParallelHE { representative, to_remove });
   }
 
-  void createFingerprints(Hypergraph& hypergraph, const HypernodeID u, const HypernodeID v) {
+  void createFingerprints(Hypergraph& hypergraph, const HypernodeID u) {
     _fingerprints.clear();
     for (const HyperedgeID& he : hypergraph.incidentEdges(u)) {
-      if (hypergraph.edgeContractionType(he) == Hypergraph::ContractionType::Case2) {
-        hypergraph.edgeHash(he) -= math::hash(v);
-        hypergraph.edgeHash(he) += math::hash(u);
-      } else if (hypergraph.edgeContractionType(he) == Hypergraph::ContractionType::Case1) {
-        hypergraph.edgeHash(he) -= math::hash(v);
+      hypergraph.edgeHash(he) = Hypergraph::kEdgeHashSeed;
+      for (const HypernodeID& pin : hypergraph.pins(he)) {
+        hypergraph.edgeHash(he) += math::hash(pin);
       }
-      hypergraph.resetEdgeContractionType(he);
-      ASSERT([&]() {
-          size_t correct_hash = Hypergraph::kEdgeHashSeed;
-          for (const HypernodeID& pin : hypergraph.pins(he)) {
-            correct_hash += math::hash(pin);
-          }
-          if (correct_hash != hypergraph.edgeHash(he)) {
-            LOG << V(correct_hash);
-            LOG << V(hypergraph.edgeHash(he));
-            return false;
-          }
-          return true;
-        } (), V(he));
       DBG << "Fingerprint for HE" << he << "= {" << he << "," << hypergraph.edgeHash(he)
           << "," << hypergraph.edgeSize(he) << "}";
       _fingerprints.emplace_back(Fingerprint { he, hypergraph.edgeHash(he) });
@@ -282,6 +267,7 @@ class HypergraphPruner {
 
  private:
   std::vector<HyperedgeID> _removed_single_node_hyperedges;
+  std::vector<std::pair<int, int> > _indirection;
   std::vector<ParallelHE> _removed_parallel_hyperedges;
   std::vector<Fingerprint> _fingerprints;
   ds::FastResetFlagArray<uint64_t> _contained_hypernodes;

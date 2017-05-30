@@ -73,7 +73,7 @@ class CoarsenerBase {
   void performContraction(const HypernodeID rep_node, const HypernodeID contracted_node) {
     _history.emplace_back(_hg.contract(rep_node, contracted_node));
     removeSingleNodeHyperedges();
-    removeParallelHyperedges();
+    // removeParallelHyperedges();
     _contraction_paths[rep_node].emplace_back(_history.back());
     if (_hg.nodeWeight(rep_node) > _max_hn_weights.back().max_weight) {
       _max_hn_weights.emplace_back(CurrentMaxNodeWeight { _hg.currentNumNodes(),
@@ -90,17 +90,19 @@ class CoarsenerBase {
   }
 
   void removeParallelHyperedges() {
-    // const HyperedgeID removed_parallel_hes =
-    //   _hypergraph_pruner.removeParallelHyperedges(_hg, _history.back());
-    // _context.stats.coarsening("numRemovedParalellHEs") += removed_parallel_hes;
+    for (const HypernodeID hn : _hg.nodes()) {
+      removeParallelHyperedges(hn);
+    }
   }
 
-  void restoreParallelHyperedges() {
-    // _hypergraph_pruner.restoreParallelHyperedges(_hg, _history.back());
+  void removeParallelHyperedges(const HypernodeID hn) {
+    const HyperedgeID removed_parallel_hes =
+      _hypergraph_pruner.removeParallelHyperedges(_hg, hn);
+    _context.stats.coarsening("numRemovedParalellHEs") += removed_parallel_hes;
   }
 
-  void restoreParallelHyperedges(const CoarseningMemento& memento) {
-    // _hypergraph_pruner.restoreParallelHyperedges(_hg, memento);
+  void restoreParallelHyperedges(const HypernodeID hn) {
+    _hypergraph_pruner.restoreParallelHyperedges(_hg, hn);
   }
 
   void restoreSingleNodeHyperedges(const CoarseningMemento& memento) {

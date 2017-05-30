@@ -74,6 +74,10 @@ class FullVertexPairCoarsener final : public ICoarsener,
  private:
   FRIEND_TEST(ACoarsener, SelectsNodePairToContractBasedOnHighestRating);
 
+  void removeParallelHyperedgesImpl() override final {
+    Base::removeParallelHyperedges();
+  }
+
   void coarsenImpl(const HypernodeID limit) override final {
     _pq.clear();
 

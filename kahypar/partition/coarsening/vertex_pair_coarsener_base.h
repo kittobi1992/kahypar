@@ -47,6 +47,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
   using CoarsenerBase::performLocalSearch;
   using CoarsenerBase::initializeRefiner;
   using CoarsenerBase::performContraction;
+  using CoarsenerBase::removeParallelHyperedges;
 
  public:
   VertexPairCoarsenerBase(Hypergraph& hypergraph, const Context& context,
@@ -71,7 +72,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       const CoarseningMemento& memento = _contraction_paths[start_hn].back();
       path_nodes.push_back(memento.contraction_memento.v);
       _contraction_paths[start_hn].pop_back();
-      restoreParallelHyperedges(memento);
       restoreSingleNodeHyperedges(memento);
       DBG << "Uncontracting: (" << memento.contraction_memento.u << ","
           << memento.contraction_memento.v << ")";
@@ -134,6 +134,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       // DBG << "Uncontraction Path for HN" << hn;
       // printUncontractionPath(hn);
       // DBG << "";
+      CoarsenerBase::restoreParallelHyperedges(hn);
       uncontractPath(hn, refinement_nodes, changes);
 
       // DBG << "refinement nodes for HN" << hn;

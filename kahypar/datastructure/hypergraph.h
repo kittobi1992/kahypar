@@ -1352,6 +1352,14 @@ class GenericHypergraph {
              == 0,
              "HN" << pin << "is already connected to HE" << he);
       DBG << "re-adding pin" << pin << "to HE" << he;
+
+      auto it = _incidence_array.begin() + hypernode(pin).firstInvalidEntry();
+      auto first_invalid = it;
+      while (*it != he) {
+        ++it;
+      }
+      std::iter_swap(it, first_invalid);
+
       hypernode(pin).incrementSize();
       if (partID(pin) != kInvalidPartition) {
         incrementPinCountInPart(he, partID(pin));

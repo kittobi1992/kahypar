@@ -70,6 +70,10 @@ class MLCoarsener final : public ICoarsener,
   MLCoarsener& operator= (MLCoarsener&&) = delete;
 
  private:
+  void removeParallelHyperedgesImpl() override final {
+    Base::removeParallelHyperedges();
+  }
+
   void coarsenImpl(const HypernodeID limit) override final {
     int pass_nr = 0;
     std::vector<HypernodeID> current_hns;
