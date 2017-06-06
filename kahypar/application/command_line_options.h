@@ -117,9 +117,10 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
   po::options_description preset_options("Preset Options", num_columns);
   preset_options.add_options()
     ("preset,p", po::value<std::string>(&context_path)->value_name("<string>"),
-    "Context Presets:\n"
-    " - direct_kway_km1_alenex17\n"
-    " - rb_cut_alenex16\n"
+    "Context Presets (see config directory):\n"
+    " - km1_direct_kway_sea17.ini\n"
+    " - direct_kway_km1_alenex17.ini\n"
+    " - rb_cut_alenex16.ini\n"
     " - <path-to-custom-ini-file>");
 
   po::options_description general_options("General Options", num_columns);
@@ -167,15 +168,6 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
     ("p-sparsifier-combined-num-hash-func",
     po::value<uint32_t>(&context.preprocessing.min_hash_sparsifier.combined_num_hash_functions)->value_name("<int>"),
     "Number of combined hash functions")
-    ("p-parallel-net-removal",
-    po::value<bool>(&context.preprocessing.remove_parallel_hes)->value_name("<bool>"),
-    "Remove parallel hyperedges before partitioning \n"
-    "(default: false)")
-    ("p-large-net-removal",
-    po::value<bool>(&context.preprocessing.remove_always_cut_hes)->value_name("<bool>"),
-    "Remove hyperedges that will always be cut because"
-    " of the weight of their pins \n"
-    "(default: false)")
     ("p-detect-communities",
     po::value<bool>(&context.preprocessing.enable_community_detection)->value_name("<bool>"),
     "Using louvain community detection for coarsening\n"
@@ -380,7 +372,7 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
         kahypar::stoppingRuleFromString(ip_stopfm);
     }),
     "Stopping Rule for IP Local Search: \n"
-    " - adaptive_opt: ALENEX'17 stopping rule \n"
+    " - adaptive_opt: ALENEX'17 adaptive stopping rule \n"
     " - simple:       ALENEX'16 threshold based on i-r-i\n"
     "(default: simple)")
     ("i-r-fm-stop-i",
@@ -396,11 +388,7 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
       }
     }),
     "Max. # local search repetitions on each level \n"
-    "(default:1, no limit:-1)")
-    ("i-stats",
-    po::value<bool>(&context.initial_partitioning.collect_stats)->value_name("<bool>"),
-    "# Collect statistics for initial partitioning \n"
-    "(default: false)");
+    "(default:1, no limit:-1)");
 
   po::options_description refinement_options("Refinement Options", num_columns);
   refinement_options.add_options()
@@ -434,10 +422,8 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
       context.local_search.fm.stopping_rule = kahypar::stoppingRuleFromString(stopfm);
     }),
     "Stopping Rule for Local Search: \n"
-    " - adaptive_opt: ALENEX'17 stopping rule \n"
-    " - adaptive1:    new nGP implementation \n"
-    " - adaptive2:    original nGP implementation \n"
-    " - simple:       threshold based on r-fm-stop-i \n"
+    " - adaptive_opt: ALENEX'17 adaptive stopping rule \n"
+    " - simple:       ALENEX'16 threshold based on r-fm-stop-i\n"
     "(default: simple)")
     ("r-fm-stop-i",
     po::value<int>(&context.local_search.fm.max_number_of_fruitless_moves)->value_name("<int>"),
@@ -445,7 +431,7 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
     "(default: 250)")
     ("r-fm-stop-alpha",
     po::value<double>(&context.local_search.fm.adaptive_stopping_alpha)->value_name("<double>"),
-    "Parameter alpha for adaptive stopping rules \n"
+    "Parameter alpha for adaptive stopping rule \n"
     "(default: 1,infinity: -1)");
 
   po::options_description cmd_line_options;
@@ -500,9 +486,5 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
     + ".seed"
     + std::to_string(context.partition.seed)
     + ".KaHyPar";
-
-  if (context.partition.verbose_output || context.initial_partitioning.verbose_output) {
-    context.partition.collect_stats = true;
-  }
 }
 }  // namespace kahypar

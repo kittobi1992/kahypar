@@ -34,7 +34,6 @@
 #include "kahypar/partition/direct_kway.h"
 #include "kahypar/partition/factories.h"
 #include "kahypar/partition/metrics.h"
-#include "kahypar/partition/preprocessing/large_hyperedge_remover.h"
 #include "kahypar/partition/preprocessing/louvain.h"
 #include "kahypar/partition/preprocessing/min_hash_sparsifier.h"
 #include "kahypar/partition/preprocessing/single_node_hyperedge_remover.h"
@@ -55,6 +54,17 @@ class APartitionedHypergraph;
 
 namespace partition {
 static inline void partition(Hypergraph& hypergraph, const Context& context) {
+  ASSERT([&]() {
+        if (context.partition.mode != Mode::recursive_bisection &&
+            context.preprocessing.enable_community_detection) {
+          return !std::all_of(hypergraph.communities().cbegin(),
+                              hypergraph.communities().cend(),
+                              [](auto i) {
+            return i == 0;
+          });
+        }
+        return true;
+      } ());
   switch (context.partition.mode) {
     case Mode::recursive_bisection:
       recursive_bisection::partition(hypergraph, context);
@@ -73,7 +83,6 @@ class Partitioner {
  public:
   Partitioner() :
     _single_node_he_remover(),
-    _large_he_remover(),
     _pin_sparsifier() { }
 
   Partitioner(const Partitioner&) = delete;
@@ -110,16 +119,17 @@ class Partitioner {
 
   static inline void configurePreprocessing(const Hypergraph& hypergraph, Context& context);
 
+  inline void sanitize(Hypergraph& hypergraph, const Context& context);
+
   inline void preprocess(Hypergraph& hypergraph, const Context& context);
   inline void preprocess(Hypergraph& hypergraph, Hypergraph& sparse_hypergraph,
                          const Context& context);
 
-  inline void postprocess(Hypergraph& hypergraph, const Context& context);
+  inline void postprocess(Hypergraph& hypergraph);
   inline void postprocess(Hypergraph& hypergraph, Hypergraph& sparse_hypergraph,
                           const Context& context);
 
   SingleNodeHyperedgeRemover _single_node_he_remover;
-  LargeHyperedgeRemover _large_he_remover;
   MinHashSparsifier _pin_sparsifier;
 };
 
@@ -173,17 +183,10 @@ inline void Partitioner::setupContext(const Hypergraph& hypergraph, Context& con
 
   context.coarsening.max_allowed_node_weight = ceil(context.coarsening.hypernode_weight_fraction
                                                     * context.partition.total_graph_weight);
-
-  // the main partitioner should track stats
-  context.partition.collect_stats = true;
 }
 
-inline void Partitioner::preprocess(Hypergraph& hypergraph, const Context& context) {
-  if (context.partition.verbose_output) {
-    LOG << "\n********************************************************************************";
-    LOG << "*                          Top Level Preprocessing..                           *";
-    LOG << "********************************************************************************";
-  }
+inline void Partitioner::sanitize(Hypergraph& hypergraph, const Context& context) {
+  io::printTopLevelPreprocessingBanner(context);
   const auto result = _single_node_he_remover.removeSingleNodeHyperedges(hypergraph);
   if (context.partition.verbose_output && result.num_removed_single_node_hes > 0) {
     LOG << "\033[1m\033[31m" << "Removed" << result.num_removed_single_node_hes
@@ -191,19 +194,9 @@ inline void Partitioner::preprocess(Hypergraph& hypergraph, const Context& conte
     LOG << "\033[1m\033[31m" << "===>" << result.num_unconnected_hns
         << "unconnected HNs could have been removed" << "\033[0m";
   }
+}
 
-  if (context.preprocessing.remove_always_cut_hes) {
-    const HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-    _large_he_remover.removeLargeHyperedges(hypergraph, context);
-    const HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-    context.stats.preprocessing("LargeHEremovalTime") +=
-      std::chrono::duration<double>(end - start).count();
-    if (context.isMainRecursiveBisection()) {
-      context.stats.topLevel().preprocessing("LargeHEremovalTime") +=
-        std::chrono::duration<double>(end - start).count();
-    }
-  }
-
+inline void Partitioner::preprocess(Hypergraph& hypergraph, const Context& context) {
   // In recursive bisection mode, we perform community detection before each
   // bisection. Therefore the 'top-level' preprocessing is disabled in this case.
   if (context.partition.mode != Mode::recursive_bisection &&
@@ -214,38 +207,25 @@ inline void Partitioner::preprocess(Hypergraph& hypergraph, const Context& conte
 
 inline void Partitioner::preprocess(Hypergraph& hypergraph, Hypergraph& sparse_hypergraph,
                                     const Context& context) {
-  preprocess(hypergraph, context);
   ASSERT(context.preprocessing.enable_min_hash_sparsifier);
 
   const HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
   sparse_hypergraph = _pin_sparsifier.buildSparsifiedHypergraph(hypergraph, context);
   const HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
 
-  context.stats.preprocessing("MinHashSparsifierTime") +=
-    std::chrono::duration<double>(end - start).count();
-  if (context.isMainRecursiveBisection()) {
-    context.stats.topLevel().preprocessing("MinHashSparsifierTime") +=
-      std::chrono::duration<double>(end - start).count();
-  }
+  context.stats.set(StatTag::Preprocessing, "MinHashSparsifierTime",
+                    std::chrono::duration<double>(end - start).count());
+  Timer::instance().add(context, Timepoint::pre_sparsifier,
+                        std::chrono::duration<double>(end - start).count());
 
   if (context.partition.verbose_output) {
     LOG << "After sparsification:";
     kahypar::io::printHypergraphInfo(sparse_hypergraph, "sparsified hypergraph");
   }
+  preprocess(sparse_hypergraph, context);
 }
 
-inline void Partitioner::postprocess(Hypergraph& hypergraph, const Context& context) {
-  if (context.preprocessing.remove_always_cut_hes) {
-    const HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-    _large_he_remover.restoreLargeHyperedges(hypergraph);
-    const HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-    context.stats.postprocessing("LargeHErestoreTime") +=
-      std::chrono::duration<double>(end - start).count();
-    if (context.isMainRecursiveBisection()) {
-      context.stats.topLevel().postprocessing("LargeHErestoreTime") +=
-        std::chrono::duration<double>(end - start).count();
-    }
-  }
+inline void Partitioner::postprocess(Hypergraph& hypergraph) {
   _single_node_he_remover.restoreSingleNodeHyperedges(hypergraph);
 }
 
@@ -256,29 +236,21 @@ inline void Partitioner::postprocess(Hypergraph& hypergraph, Hypergraph& sparse_
   const HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
   _pin_sparsifier.applyPartition(sparse_hypergraph, hypergraph);
   const HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-  context.stats.postprocessing("MinHashSparsifierTime") +=
-    std::chrono::duration<double>(end - start).count();
-  if (context.isMainRecursiveBisection()) {
-    context.stats.topLevel().postprocessing("MinHashSparsifierTime") +=
-      std::chrono::duration<double>(end - start).count();
-  }
-  postprocess(hypergraph, context);
+  context.stats.set(StatTag::Postprocessing, "MinHashSparsifierTime",
+                    std::chrono::duration<double>(end - start).count());
+  Timer::instance().add(context, Timepoint::post_sparsifier_restore,
+                        std::chrono::duration<double>(end - start).count());
+  postprocess(hypergraph);
 }
 
 inline void Partitioner::partition(Hypergraph& hypergraph, Context& context) {
   configurePreprocessing(hypergraph, context);
 
   setupContext(hypergraph, context);
-  if (context.type == ContextType::main && !context.partition.quiet_mode) {
-    LOG << context;
-    if (context.partition.verbose_output) {
-      LOG << "\n********************************************************************************";
-      LOG << "*                                    Input                                     *";
-      LOG << "********************************************************************************";
-      io::printHypergraphInfo(hypergraph, context.partition.graph_filename.substr(
-                                context.partition.graph_filename.find_last_of('/') + 1));
-    }
-  }
+  io::printInputInformation(context, hypergraph);
+
+  sanitize(hypergraph, context);
+
   if (context.preprocessing.min_hash_sparsifier.is_active) {
     Hypergraph sparseHypergraph;
     preprocess(hypergraph, sparseHypergraph, context);
@@ -287,7 +259,7 @@ inline void Partitioner::partition(Hypergraph& hypergraph, Context& context) {
   } else {
     preprocess(hypergraph, context);
     partition::partition(hypergraph, context);
-    postprocess(hypergraph, context);
+    postprocess(hypergraph);
   }
 }
 }  // namespace kahypar

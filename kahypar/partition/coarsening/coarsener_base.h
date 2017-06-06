@@ -86,7 +86,7 @@ class CoarsenerBase {
   void removeSingleNodeHyperedges() {
     const HyperedgeWeight removed_he_weight =
       _hypergraph_pruner.removeSingleNodeHyperedges(_hg, _history.back());
-    _context.stats.coarsening("removedSingleNodeHEWeight") += removed_he_weight;
+    _context.stats.add(StatTag::Coarsening, "removedSingleNodeHEWeight", removed_he_weight);
   }
 
   void removeParallelHyperedges() {
@@ -98,7 +98,7 @@ class CoarsenerBase {
   void removeParallelHyperedges(const HypernodeID hn) {
     const HyperedgeID removed_parallel_hes =
       _hypergraph_pruner.removeParallelHyperedges(_hg, hn);
-    _context.stats.coarsening("numRemovedParalellHEs") += removed_parallel_hes;
+    _context.stats.add(StatTag::Coarsening, "numRemovedParalellHEs", removed_parallel_hes);
   }
 
   void restoreParallelHyperedges(const HypernodeID hn) {

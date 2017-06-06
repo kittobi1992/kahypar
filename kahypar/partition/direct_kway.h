@@ -37,18 +37,35 @@ static constexpr bool debug = false;
 
 static inline bool partitionVCycle(Hypergraph& hypergraph, ICoarsener& coarsener,
                                    IRefiner& refiner, const Context& context) {
+  // In order to perform parallel net detection, we have to reset the edge hashes
+  // before coarsening.
+  hypergraph.resetEdgeHashes();
+
+  io::printVcycleBanner(context);
+  io::printCoarseningBanner(context);
+
   HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
   coarsener.coarsen(context.coarsening.contraction_limit);
   HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-  context.stats.coarsening("Time") += std::chrono::duration<double>(end - start).count();
+  Timer::instance().add(context, Timepoint::v_cycle_coarsening,
+                        std::chrono::duration<double>(end - start).count());
+
+  if (context.partition.verbose_output && context.type == ContextType::main) {
+    io::printHypergraphInfo(hypergraph, "Coarsened Hypergraph");
+  }
 
   hypergraph.initializeNumCutHyperedges();
 
+  io::printLocalSearchBanner(context);
+
   start = std::chrono::high_resolution_clock::now();
-  const bool found_improved_cut = coarsener.uncoarsen(refiner);
+  const bool improved_quality = coarsener.uncoarsen(refiner);
   end = std::chrono::high_resolution_clock::now();
-  context.stats.localSearch("Time") += std::chrono::duration<double>(end - start).count();
-  return found_improved_cut;
+  Timer::instance().add(context, Timepoint::v_cycle_local_search,
+                        std::chrono::duration<double>(end - start).count());
+
+  io::printLocalSearchResults(context, hypergraph);
+  return improved_quality;
 }
 
 
@@ -64,24 +81,27 @@ static inline void partition(Hypergraph& hypergraph, const Context& context) {
 
   multilevel::partition(hypergraph, *coarsener, *refiner, context);
 
-  DBG << "PartitioningResult: cut=" << metrics::hyperedgeCut(hypergraph);
 #ifndef NDEBUG
   HyperedgeWeight initial_cut = std::numeric_limits<HyperedgeWeight>::max();
+  HyperedgeWeight initial_km1 = std::numeric_limits<HyperedgeWeight>::max();
 #endif
 
   for (int vcycle = 1; vcycle <= context.partition.global_search_iterations; ++vcycle) {
-    const bool found_improved_cut = partitionVCycle(hypergraph, *coarsener, *refiner, context);
+    context.partition.current_v_cycle = vcycle;
+    const bool improved_quality = partitionVCycle(hypergraph, *coarsener, *refiner, context);
 
-    DBG << V(vcycle) << V(metrics::hyperedgeCut(hypergraph));
-    if (!found_improved_cut) {
-      LOG << "Cut could not be decreased in v-cycle" << vcycle << ". Stopping global search.";
+    if (!improved_quality) {
+      LOG << "No improvement in V-cycle" << vcycle << ". Stopping global search.";
       break;
     }
 
     ASSERT(metrics::hyperedgeCut(hypergraph) <= initial_cut,
-           "Uncoarsening worsened cut:" << metrics::hyperedgeCut(hypergraph) << ">" << initial_cut);
+           metrics::hyperedgeCut(hypergraph) << ">" << initial_cut);
+    ASSERT(metrics::km1(hypergraph) <= initial_km1,
+           metrics::km1(hypergraph) << ">" << initial_km1);
 #ifndef NDEBUG
     initial_cut = metrics::hyperedgeCut(hypergraph);
+    initial_cut = metrics::km1(hypergraph);
 #endif
   }
 }

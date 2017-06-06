@@ -54,8 +54,6 @@ struct CommunityDetection {
 struct PreprocessingParameters {
   bool enable_min_hash_sparsifier = false;
   bool enable_community_detection = false;
-  bool remove_always_cut_hes = false;
-  bool remove_parallel_hes = false;
   MinHashSparsifierParameters min_hash_sparsifier = MinHashSparsifierParameters();
   CommunityDetection community_detection = CommunityDetection();
 };
@@ -101,10 +99,6 @@ inline std::ostream& operator<< (std::ostream& str, const PreprocessingParameter
       << params.enable_min_hash_sparsifier << std::endl;
   str << "  enable community detection:         " << std::boolalpha
       << params.enable_community_detection << std::endl;
-  str << "  remove parallel HEs:                " << std::boolalpha
-      << params.remove_parallel_hes << std::endl;
-  str << "  remove HEs that always will be cut: " << std::boolalpha
-      << params.remove_always_cut_hes << std::endl;
   if (params.enable_min_hash_sparsifier) {
     str << "-------------------------------------------------------------------------------"
         << std::endl;
@@ -235,8 +229,7 @@ class InitialPartitioningParameters {
     lp_max_iteration(100),
     lp_assign_vertex_to_part(5),
     refinement(true),
-    verbose_output(false),
-    collect_stats(false) {
+    verbose_output(false) {
     // Specifically tuned for IP
     coarsening.contraction_limit_multiplier = 150;
     coarsening.max_allowed_weight_multiplier = 2.5;
@@ -272,7 +265,6 @@ class InitialPartitioningParameters {
   int lp_assign_vertex_to_part;
   bool refinement;
   bool verbose_output;
-  bool collect_stats;
 };
 
 inline std::ostream& operator<< (std::ostream& str, const InitialPartitioningParameters& params) {
@@ -301,7 +293,7 @@ struct PartitioningParameters {
   PartitionID rb_upper_k = 1;
   int seed = 0;
   int global_search_iterations = 0;
-  int current_v_cycle = 0;
+  mutable int current_v_cycle = 0;
   std::array<HypernodeWeight, 2> perfect_balance_part_weights { {
                                                                   std::numeric_limits<HypernodeWeight>::max(),
                                                                   std::numeric_limits<HypernodeWeight>::max()
@@ -311,7 +303,6 @@ struct PartitioningParameters {
   HyperedgeID hyperedge_size_threshold = std::numeric_limits<HypernodeID>::max();
 
   bool verbose_output = false;
-  bool collect_stats = false;
   bool quiet_mode = false;
   bool sp_process_output = false;
 
