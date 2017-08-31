@@ -34,21 +34,21 @@
 
 namespace kahypar {
 struct MinHashSparsifierParameters {
-  uint32_t max_hyperedge_size = 1200;
-  uint32_t max_cluster_size = 10;
-  uint32_t min_cluster_size = 2;
-  uint32_t num_hash_functions = 5;
-  uint32_t combined_num_hash_functions = 100;
-  HypernodeID min_median_he_size = 28;
+  uint32_t max_hyperedge_size = std::numeric_limits<uint32_t>::max();
+  uint32_t max_cluster_size = std::numeric_limits<uint32_t>::max();
+  uint32_t min_cluster_size = std::numeric_limits<uint32_t>::max();
+  uint32_t num_hash_functions = std::numeric_limits<uint32_t>::max();
+  uint32_t combined_num_hash_functions = std::numeric_limits<uint32_t>::max();
+  HypernodeID min_median_he_size = std::numeric_limits<uint32_t>::max();
   bool is_active = false;
 };
 
 struct CommunityDetection {
   bool enable_in_initial_partitioning = false;
   bool reuse_communities = false;
-  LouvainEdgeWeight edge_weight = LouvainEdgeWeight::hybrid;
-  int max_pass_iterations = 100;
-  long double min_eps_improvement = 0.0001;
+  LouvainEdgeWeight edge_weight = LouvainEdgeWeight::UNDEFINED;
+  uint32_t max_pass_iterations = std::numeric_limits<uint32_t>::max();
+  long double min_eps_improvement = std::numeric_limits<long double>::max();
 };
 
 struct PreprocessingParameters {
@@ -86,7 +86,7 @@ inline std::ostream& operator<< (std::ostream& str, const CommunityDetection& pa
   str << "  minimum quality improvement:        "
       << params.min_eps_improvement << std::endl;
   str << "  graph edge weight:                  "
-      << toString(params.edge_weight) << std::endl;
+      << params.edge_weight << std::endl;
   str << "  reuse community structure:          " << std::boolalpha
       << params.reuse_communities << std::endl;
   return str;
@@ -114,28 +114,29 @@ inline std::ostream& operator<< (std::ostream& str, const PreprocessingParameter
 }
 
 struct RatingParameters {
-  RatingFunction rating_function = RatingFunction::heavy_edge;
-  CommunityPolicy community_policy = CommunityPolicy::use_communities;
-  HeavyNodePenaltyPolicy heavy_node_penalty_policy = HeavyNodePenaltyPolicy::multiplicative_penalty;
-  AcceptancePolicy acceptance_policy = AcceptancePolicy::best;
+  RatingFunction rating_function = RatingFunction::UNDEFINED;
+  CommunityPolicy community_policy = CommunityPolicy::UNDEFINED;
+  HeavyNodePenaltyPolicy heavy_node_penalty_policy = HeavyNodePenaltyPolicy::UNDEFINED;
+  AcceptancePolicy acceptance_policy = AcceptancePolicy::UNDEFINED;
 };
 
 inline std::ostream& operator<< (std::ostream& str, const RatingParameters& params) {
   str << "  Rating Parameters:" << std::endl;
-  str << "    Rating Function:                  " << toString(params.rating_function) << std::endl;
-  str << "    Use Community Structure:          " << toString(params.community_policy) << std::endl;
-  str << "    Heavy Node Penalty:               " << toString(params.heavy_node_penalty_policy) << std::endl;
-  str << "    Acceptance Policy:                " << toString(params.acceptance_policy) << std::endl;
+  str << "    Rating Function:                  " << params.rating_function << std::endl;
+  str << "    Use Community Structure:          " << params.community_policy << std::endl;
+  str << "    Heavy Node Penalty:               " << params.heavy_node_penalty_policy << std::endl;
+  str << "    Acceptance Policy:                " << params.acceptance_policy << std::endl;
   return str;
 }
 
 
 struct CoarseningParameters {
-  CoarseningAlgorithm algorithm = CoarseningAlgorithm::heavy_lazy;
+  CoarseningAlgorithm algorithm = CoarseningAlgorithm::UNDEFINED;
   RatingParameters rating = { };
-  HypernodeID contraction_limit_multiplier = 160;
-  double max_allowed_weight_multiplier = 3.25;
+  HypernodeID contraction_limit_multiplier = std::numeric_limits<HypernodeID>::max();
+  double max_allowed_weight_multiplier = std::numeric_limits<double>::max();
 
+  // Those will be determined dynamically
   HypernodeWeight max_allowed_node_weight = 0;
   HypernodeID contraction_limit = 0;
   double hypernode_weight_fraction = 0.0;
@@ -143,7 +144,7 @@ struct CoarseningParameters {
 
 inline std::ostream& operator<< (std::ostream& str, const CoarseningParameters& params) {
   str << "Coarsening Parameters:" << std::endl;
-  str << "  Algorithm:                          " << toString(params.algorithm) << std::endl;
+  str << "  Algorithm:                          " << params.algorithm << std::endl;
   str << "  max-allowed-weight-multiplier:      " << params.max_allowed_weight_multiplier << std::endl;
   str << "  contraction-limit-multiplier:       " << params.contraction_limit_multiplier << std::endl;
   str << "  hypernode weight fraction:          ";
@@ -174,9 +175,9 @@ inline std::ostream& operator<< (std::ostream& str, const CoarseningParameters& 
 
 struct LocalSearchParameters {
   struct FM {
-    int max_number_of_fruitless_moves = 350;
-    double adaptive_stopping_alpha = 1.0;
-    RefinementStoppingRule stopping_rule = RefinementStoppingRule::simple;
+    uint32_t max_number_of_fruitless_moves = std::numeric_limits<uint32_t>::max();
+    double adaptive_stopping_alpha = std::numeric_limits<double>::max();
+    RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
   };
 
   struct Sclap {
@@ -185,18 +186,18 @@ struct LocalSearchParameters {
 
   FM fm { };
   Sclap sclap { };
-  RefinementAlgorithm algorithm = RefinementAlgorithm::kway_fm;
+  RefinementAlgorithm algorithm = RefinementAlgorithm::UNDEFINED;
   int iterations_per_level = std::numeric_limits<int>::max();
 };
 
 inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters& params) {
   str << "Local Search Parameters:" << std::endl;
-  str << "  Algorithm:                          " << toString(params.algorithm) << std::endl;
+  str << "  Algorithm:                          " << params.algorithm << std::endl;
   str << "  iterations per level:               " << params.iterations_per_level << std::endl;
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1) {
-    str << "  stopping rule:                      " << toString(params.fm.stopping_rule) << std::endl;
+    str << "  stopping rule:                      " << params.fm.stopping_rule << std::endl;
     if (params.fm.stopping_rule == RefinementStoppingRule::simple) {
       str << "  max. # fruitless moves:             " << params.fm.max_number_of_fruitless_moves << std::endl;
     } else {
@@ -210,61 +211,33 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   return str;
 }
 
-class InitialPartitioningParameters {
- public:
-  InitialPartitioningParameters() :
-    mode(Mode::recursive_bisection),
-    technique(InitialPartitioningTechnique::flat),
-    algo(InitialPartitionerAlgorithm::pool),
-    coarsening(),
-    local_search(),
-    nruns(20),
-    k(2),
-    epsilon(0.05),
-    upper_allowed_partition_weight(),
-    perfect_balance_partition_weight(),
-    unassigned_part(1),
-    init_alpha(1.0),
-    pool_type(1975),
-    lp_max_iteration(100),
-    lp_assign_vertex_to_part(5),
-    refinement(true),
-    verbose_output(false) {
-    // Specifically tuned for IP
-    coarsening.contraction_limit_multiplier = 150;
-    coarsening.max_allowed_weight_multiplier = 2.5;
-
-    local_search.algorithm = RefinementAlgorithm::twoway_fm;
-    local_search.fm.max_number_of_fruitless_moves = 50;
-    local_search.fm.stopping_rule = RefinementStoppingRule::simple;
-  }
-
-  Mode mode;
-  InitialPartitioningTechnique technique;
-  InitialPartitionerAlgorithm algo;
-  CoarseningParameters coarsening;
-  LocalSearchParameters local_search;
-  int nruns;
+struct InitialPartitioningParameters {
+  Mode mode = Mode::UNDEFINED;
+  InitialPartitioningTechnique technique = InitialPartitioningTechnique::UNDEFINED;
+  InitialPartitionerAlgorithm algo = InitialPartitionerAlgorithm::UNDEFINED;
+  CoarseningParameters coarsening = { };
+  LocalSearchParameters local_search = { };
+  uint32_t nruns = std::numeric_limits<uint32_t>::max();
 
   // The following parameters are only used internally and are not supposed to
   // be changed by the user.
-  PartitionID k;
-  double epsilon;
-  HypernodeWeightVector upper_allowed_partition_weight;
-  HypernodeWeightVector perfect_balance_partition_weight;
-  PartitionID unassigned_part;
+  PartitionID k = std::numeric_limits<PartitionID>::max();
+  double epsilon = std::numeric_limits<double>::max();
+  HypernodeWeightVector upper_allowed_partition_weight = { };
+  HypernodeWeightVector perfect_balance_partition_weight = { };
+  PartitionID unassigned_part = 1;
   // Is used to get a tighter balance constraint for initial partitioning.
   // Before initial partitioning epsilon is set to init_alpha*epsilon.
-  double init_alpha;
+  double init_alpha = 1;
   // If pool initial partitioner is used, the first 12 bits of this number decides
   // which algorithms are used.
-  unsigned int pool_type;
+  unsigned int pool_type = 1975;
   // Maximum iterations of the Label Propagation IP over all hypernodes
-  int lp_max_iteration;
+  int lp_max_iteration = 100;
   // Amount of hypernodes which are assigned around each start vertex (LP)
-  int lp_assign_vertex_to_part;
-  bool refinement;
-  bool verbose_output;
+  int lp_assign_vertex_to_part = 5;
+  bool refinement = true;
+  bool verbose_output = false;
 };
 
 inline std::ostream& operator<< (std::ostream& str, const InitialPartitioningParameters& params) {
@@ -272,9 +245,9 @@ inline std::ostream& operator<< (std::ostream& str, const InitialPartitioningPar
       << std::endl;
   str << "Initial Partitioning Parameters:" << std::endl;
   str << "  # IP trials:                        " << params.nruns << std::endl;
-  str << "  Mode:                               " << toString(params.mode) << std::endl;
-  str << "  Technique:                          " << toString(params.technique) << std::endl;
-  str << "  Algorithm:                          " << toString(params.algo) << std::endl;
+  str << "  Mode:                               " << params.mode << std::endl;
+  str << "  Technique:                          " << params.technique << std::endl;
+  str << "  Algorithm:                          " << params.algo << std::endl;
   str << "IP Coarsening:                        " << std::endl;
   str << params.coarsening;
   str << "IP Local Search:                      " << std::endl;
@@ -285,21 +258,22 @@ inline std::ostream& operator<< (std::ostream& str, const InitialPartitioningPar
 }
 
 struct PartitioningParameters {
-  Mode mode = Mode::direct_kway;
-  Objective objective = Objective::cut;
-  double epsilon = 0.03;
-  PartitionID k = 2;
-  PartitionID rb_lower_k = 0;
-  PartitionID rb_upper_k = 1;
+  Mode mode = Mode::UNDEFINED;
+  Objective objective = Objective::UNDEFINED;
+  double epsilon = std::numeric_limits<double>::max();
+  PartitionID k = std::numeric_limits<PartitionID>::max();
+  PartitionID rb_lower_k = std::numeric_limits<PartitionID>::max();
+  PartitionID rb_upper_k = std::numeric_limits<PartitionID>::max();
   int seed = 0;
-  int global_search_iterations = 0;
-  mutable int current_v_cycle = 0;
+  uint32_t global_search_iterations = std::numeric_limits<uint32_t>::max();
+  mutable uint32_t current_v_cycle = 0;
   std::array<HypernodeWeight, 2> perfect_balance_part_weights { {
                                                                   std::numeric_limits<HypernodeWeight>::max(),
                                                                   std::numeric_limits<HypernodeWeight>::max()
                                                                 } };
-  std::array<HypernodeWeight, 2> max_part_weights { { 0, 0 } };
-  HypernodeWeight total_graph_weight = 0;
+  std::array<HypernodeWeight, 2> max_part_weights { { std::numeric_limits<HypernodeWeight>::max(),
+                                                      std::numeric_limits<HypernodeWeight>::max() } };
+  HypernodeWeight total_graph_weight = std::numeric_limits<HypernodeWeight>::max();
   HyperedgeID hyperedge_size_threshold = std::numeric_limits<HypernodeID>::max();
 
   bool verbose_output = false;
@@ -314,8 +288,8 @@ inline std::ostream& operator<< (std::ostream& str, const PartitioningParameters
   str << "Partitioning Parameters:" << std::endl;
   str << "  Hypergraph:                         " << params.graph_filename << std::endl;
   str << "  Partition File:                     " << params.graph_partition_filename << std::endl;
-  str << "  Mode:                               " << toString(params.mode) << std::endl;
-  str << "  Objective:                          " << toString(params.objective) << std::endl;
+  str << "  Mode:                               " << params.mode << std::endl;
+  str << "  Objective:                          " << params.objective << std::endl;
   str << "  k:                                  " << params.k << std::endl;
   str << "  epsilon:                            " << params.epsilon << std::endl;
   str << "  seed:                               " << params.seed << std::endl;
@@ -381,17 +355,17 @@ inline std::ostream& operator<< (std::ostream& str, const Context& context) {
 static inline void checkRecursiveBisectionMode(RefinementAlgorithm& algo) {
   if (algo == RefinementAlgorithm::kway_fm) {
     LOG << "WARNING: local search algorithm is set to"
-        << toString(algo)
-        << ". However" << toString(RefinementAlgorithm::twoway_fm)
+        << algo
+        << ". However" << RefinementAlgorithm::twoway_fm
         << "is better and faster.";
     LOG << "Should the local search algorithm be changed to"
-        << toString(RefinementAlgorithm::twoway_fm) << "(Y/N)?";
+        << RefinementAlgorithm::twoway_fm << "(Y/N)?";
     char answer = 'N';
     std::cin >> answer;
     answer = std::toupper(answer);
     if (answer == 'Y') {
       LOG << "Changing local search algorithm to"
-          << toString(RefinementAlgorithm::twoway_fm);
+          << RefinementAlgorithm::twoway_fm;
       algo = RefinementAlgorithm::twoway_fm;
     }
   }
@@ -400,16 +374,16 @@ static inline void checkRecursiveBisectionMode(RefinementAlgorithm& algo) {
 void checkDirectKwayMode(RefinementAlgorithm& algo) {
   if (algo == RefinementAlgorithm::twoway_fm) {
     LOG << "WARNING: local search algorithm is set to"
-        << toString(algo)
+        << algo
         << ". This algorithm cannot be used for direct k-way partitioning with k>2.";
     LOG << "Should the local search algorithm be changed to"
-        << toString(RefinementAlgorithm::kway_fm) << "(Y/N)?";
+        << RefinementAlgorithm::kway_fm << "(Y/N)?";
     char answer = 'N';
     std::cin >> answer;
     answer = std::toupper(answer);
     if (answer == 'Y') {
       LOG << "Changing local search algorithm to"
-          << toString(RefinementAlgorithm::kway_fm);
+          << RefinementAlgorithm::kway_fm;
       algo = RefinementAlgorithm::kway_fm;
     }
   }
@@ -426,7 +400,7 @@ static inline void sanityCheck(Context& context) {
       // should run in direct mode and not in recursive bisection mode (since there
       // is nothing left to bisect).
       ALWAYS_ASSERT(context.initial_partitioning.mode == Mode::direct_kway,
-                    toString(context.initial_partitioning.mode));
+                    context.initial_partitioning.mode);
       // Furthermore, the IP algorithm should not use the multilevel technique itself,
       // because the hypergraph is already coarse enough for initial partitioning.
       // Therefore we prevent further coarsening by enforcing flat rather than multilevel.
@@ -435,7 +409,7 @@ static inline void sanityCheck(Context& context) {
       // could just do the additional multilevel coarsening and then call the initial
       // partitioning algorithm as a flat algorithm.
       ALWAYS_ASSERT(context.initial_partitioning.technique == InitialPartitioningTechnique::flat,
-                    toString(context.initial_partitioning.technique));
+                    context.initial_partitioning.technique);
       checkRecursiveBisectionMode(context.local_search.algorithm);
       break;
     case Mode::direct_kway:
@@ -446,8 +420,8 @@ static inline void sanityCheck(Context& context) {
       // we currently forbid this contexturation.
       ALWAYS_ASSERT(context.initial_partitioning.mode != Mode::direct_kway ||
                     context.initial_partitioning.technique == InitialPartitioningTechnique::flat,
-                    toString(context.initial_partitioning.mode)
-                    << toString(context.initial_partitioning.technique));
+                    context.initial_partitioning.mode
+                    << context.initial_partitioning.technique);
       checkDirectKwayMode(context.local_search.algorithm);
       break;
     default:

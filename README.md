@@ -1,14 +1,14 @@
-KaHyPar - Karlsruhe Hypergraph Partitioning
-===============
+<h1 align="center">KaHyPar - Karlsruhe Hypergraph Partitioning</h1>
 
-License|Linux & macOS Build|Windows Build|Coverity Scan|SonarQube|
-|:--:|:--:|:--:|:--:|:--:|
-|[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](http://www.gnu.org/licenses/gpl-3.0)|[![Travis-CI Status](https://travis-ci.com/SebastianSchlag/kahypar.svg?token=ZcLRsjUs4Yprny1FyfPy&branch=master)](https://travis-ci.com/SebastianSchlag/kahypar)|[![Appveyor Status](https://ci.appveyor.com/api/projects/status/s7dagw0l6s8kgmui?svg=true)](https://ci.appveyor.com/project/SebastianSchlag/kahypar-vr7q9)|[![Coverity Status](https://scan.coverity.com/projects/11452/badge.svg)](https://scan.coverity.com/projects/11452/badge.svg)|[![Quality Gate](https://sonarqube.com/api/badges/gate?key=KaHyPar)](https://sonarqube.com/dashboard/index/KaHyPar)|
+
+License|Linux & macOS Build|Windows Build|Code Coverage|Coverity Scan|SonarQube|Fossa
+:--:|:--:|:--:|:--:|:--:|:--:|:--:
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](http://www.gnu.org/licenses/gpl-3.0)|[![Travis-CI Status](https://travis-ci.com/SebastianSchlag/kahypar.svg?token=ZcLRsjUs4Yprny1FyfPy&branch=master)](https://travis-ci.com/SebastianSchlag/kahypar)|[![Appveyor Status](https://ci.appveyor.com/api/projects/status/s7dagw0l6s8kgmui?svg=true)](https://ci.appveyor.com/project/SebastianSchlag/kahypar-vr7q9)|[![codecov](https://codecov.io/gh/SebastianSchlag/kahypar/branch/master/graph/badge.svg)](https://codecov.io/gh/SebastianSchlag/kahypar)|[![Coverity Status](https://scan.coverity.com/projects/11452/badge.svg)](https://scan.coverity.com/projects/11452/badge.svg)|[![Quality Gate](https://sonarqube.com/api/badges/gate?key=KaHyPar)](https://sonarqube.com/dashboard/index/KaHyPar)|[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bhttps%3A%2F%2Fgithub.com%2FSebastianSchlag%2Fkahypar.svg?type=shield)](https://app.fossa.io/projects/git%2Bhttps%3A%2F%2Fgithub.com%2FSebastianSchlag%2Fkahypar?ref=badge_shield)
 
 What is a Hypergraph? What is Hypergraph Partitioning?
 -----------
 [Hypergraphs][HYPERGRAPHWIKI] are a generalization of graphs, where each (hyper)edge (also called net) can
-connect more than two vertices. The *k*-way hypergraph partitioning problem is the generalization of the well-known graph partitioning problem: partition the vertex set into *k* disjoint
+connect more than two vertices. The *k*-way hypergraph partitioning problem is the generalization of the well-known [graph partitioning][GraphPartition] problem: partition the vertex set into *k* disjoint
 blocks of bounded size (at most 1 + ε times the average block size), while minimizing an
 objective function defined on the nets. 
 
@@ -52,10 +52,14 @@ algorithm if its corresponding ratio values are below those of the other algorit
 
 
 **Interactive** visualizations of the performance plots and detailed per-instance results can be found on
-the website accompanying each publication:
- - KaHyPar-CA: [SEA'17][SEA'17bench] (latest version of KaHyPar)
- - KaHyPar-K:  [ALENEX'17][ALENEX'17bench] (referred to as KaHyPar in the picture above)
- - KaHyPar-R:  [ALENEX'16][ALENEX'16bench] (only experimental results)
+the website accompanying each publication.
+
+#### Additional Resources
+
+|KaHyPar-CA (latest version of KaHyPar)|[Paper](http://drops.dagstuhl.de/opus/volltexte/2017/7622/)|[Slides](http://algo2.iti.kit.edu/sea17schlag.php)|[Experimentel Results][SEA'17bench]|
+|:--|:--:|:--:|:--:|
+|KaHyPar-K (referred to as KaHyPar in the picture above)|[Paper][ALENEX'17]|[Slides](http://algo2.iti.kit.edu/3214.php)|[Experimental Results][ALENEX'17bench]|
+|KaHyPar-R|[Paper][ALENEX'16]|[Slides](http://algo2.iti.kit.edu/3034.php)|[Experimental Results][ALENEX'16bench]|
 
 Requirements:
 -----------
@@ -121,9 +125,8 @@ Licensing:
 
 KaHyPar is free software provided under the GNU General Public License (GPLv3).
 For more information see the [COPYING file][CF].
-
 We distribute this framework freely to foster the use and development of hypergraph partitioning tools. 
-If you use KaHyPar in an academic setting please cite the appropriate paper:
+If you use KaHyPar in an academic setting please cite the appropriate paper. If you are interested in a commercial license, please contact me.
     
     // KaHyPar-R
     @inproceedings{shhmss2016alenex,
@@ -158,7 +161,7 @@ If you use KaHyPar in an academic setting please cite the appropriate paper:
                   Sebastian Schlag},
      title     = {Improving Coarsening Schemes for Hypergraph Partitioning by Exploiting Community Structure},
      booktitle = {16th International Symposium on Experimental Algorithms, (SEA 2017)},
-     pages     = {50:1--50:19},
+     pages     = {21:1--21:19},
      year      = {2017},
     }
 
@@ -183,3 +186,4 @@ feel free to contact me or create an issue on the
 [ALENEX'16bench]: http://dx.doi.org/10.5281/zenodo.30176
 [ALENEX'17bench]: https://algo2.iti.kit.edu/schlag/alenex2017/
 [SEA'17bench]: https://algo2.iti.kit.edu/schlag/sea2017/
+[GraphPartition]: https://en.wikipedia.org/wiki/Graph_partition

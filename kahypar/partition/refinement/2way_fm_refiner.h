@@ -41,7 +41,6 @@
 #include "kahypar/partition/refinement/2way_fm_gain_cache.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
-#include "kahypar/partition/refinement/policies/2fm_rebalancing_policy.h"
 #include "kahypar/partition/refinement/policies/fm_improvement_policy.h"
 #include "kahypar/utils/float_compare.h"
 #include "kahypar/utils/randomize.h"
@@ -404,7 +403,7 @@ class TwoWayFMRefiner final : public IRefiner,
                 ASSERT(true == false, "HN" << pin << "not in PQ, but also not marked!");
               }
             }
-            // Gain calculation needs to be consistent in cache and rebalance pq
+            // Gain calculation needs to be consistent in cache
             ASSERT(!_gain_cache.isCached(pin) || _gain_cache.value(pin) == computeGain(pin),
                    V(pin) << V(_gain_cache.value(pin)) << V(computeGain(pin)));
           }
@@ -528,18 +527,12 @@ class TwoWayFMRefiner final : public IRefiner,
   // Removal of new non-border HNs is performed lazily after all updates
   // Used in the following cases:
   // - State transition: loose -> loose
-  //   In this case, deltaUpdate<false,true> is called, since we perform
-  //   a delta update induced by a local search move (and thus not a rebalancing
-  //   move) and we do want to update the PQ.
+  //   In this case, deltaUpdate<true> is called, since we perform
+  //   a delta update induced by a local search move and we do want to update the PQ.
   // - State transition: locked -> locked
-  //   In this case, we call deltaUpdate<false,false>, since we do not
+  //   In this case, we call deltaUpdate<false>, since we do not
   //   update the pq for locked HEs since locked HEs cannot be removed from the cut.
-  // - Update because of rebalancing move
-  //   In this case, we call deltaUpdate<true,true> because the delta update is
-  //   due to a rebalancing  move. In this case we have to check for active nodes
-  //   (first template parameter) and want to update the PQ (second template parameter).
-  template <bool is_rebalancing_update = false,
-            bool update_local_search_pq = true>
+  template <bool update_local_search_pq = true>
   void deltaUpdate(const PartitionID from_part,
                    const PartitionID to_part, const HyperedgeID he) {
     const HypernodeID pin_count_from_part_after_move = _hg.pinCountInPart(he, from_part);
@@ -558,8 +551,7 @@ class TwoWayFMRefiner final : public IRefiner,
       if (_hg.edgeSize(he) == 2) {
         for (const HypernodeID& pin : _hg.pins(he)) {
           const char factor = (_hg.partID(pin) == from_part ? 2 : -2);
-          if (update_local_search_pq &&
-              (is_rebalancing_update ? _hg.active(pin) : !_hg.marked(pin))) {
+          if (update_local_search_pq && !_hg.marked(pin)) {
             updatePin(pin, factor * he_weight);
             continue;      // caching is done in updatePin in this case
           }
@@ -567,8 +559,7 @@ class TwoWayFMRefiner final : public IRefiner,
         }
       } else if (he_became_cut_he) {
         for (const HypernodeID& pin : _hg.pins(he)) {
-          if (update_local_search_pq &&
-              (is_rebalancing_update ? _hg.active(pin) : !_hg.marked(pin))) {
+          if (update_local_search_pq && !_hg.marked(pin)) {
             updatePin(pin, he_weight);
             continue;      // caching is done in updatePin in this case
           }
@@ -576,32 +567,29 @@ class TwoWayFMRefiner final : public IRefiner,
         }
       } else if (he_became_internal_he) {
         for (const HypernodeID& pin : _hg.pins(he)) {
-          if (update_local_search_pq &&
-              (is_rebalancing_update ? _hg.active(pin) : !_hg.marked(pin))) {
+          if (update_local_search_pq && !_hg.marked(pin)) {
             updatePin(pin, -he_weight);
             continue;      // caching is done in updatePin in this case
           }
           updateGainCache(pin, -he_weight);
         }
       } else {
-        for (const HypernodeID& pin : _hg.pins(he)) {
-          if (_hg.partID(pin) == from_part) {
-            if (increase_necessary) {
-              if (update_local_search_pq &&
-                  (is_rebalancing_update ? _hg.active(pin) : !_hg.marked(pin))) {
-                updatePin(pin, he_weight);
-                // break;      // caching is done in updatePin in this case
-              } else {
-                updateGainCache(pin, he_weight);
+        if (increase_necessary || decrease_necessary) {
+          for (const HypernodeID& pin : _hg.pins(he)) {
+            if (_hg.partID(pin) == from_part) {
+              if (increase_necessary) {
+                if (update_local_search_pq && !_hg.marked(pin)) {
+                  updatePin(pin, he_weight);  // caching is done in updatePin in this case
+                } else {
+                  updateGainCache(pin, he_weight);
+                }
               }
-            }
-          } else if (decrease_necessary) {
-            if (update_local_search_pq &&
-                (is_rebalancing_update ? _hg.active(pin) : !_hg.marked(pin))) {
-              updatePin(pin, -he_weight);
-              // break;    // caching is done in updatePin in this case
-            } else {
-              updateGainCache(pin, -he_weight);
+            } else if (decrease_necessary) {
+              if (update_local_search_pq && !_hg.marked(pin)) {
+                updatePin(pin, -he_weight);  // caching is done in updatePin in this case
+              } else {
+                updateGainCache(pin, -he_weight);
+              }
             }
           }
         }
