@@ -26,11 +26,13 @@
 
 #include "kahypar/definitions.h"
 #include "kahypar/macros.h"
+#include "kahypar/partition/coarsening/i_coarsener.h"
 #include "kahypar/partition/coarsening/policies/rating_acceptance_policy.h"
 #include "kahypar/partition/coarsening/policies/rating_community_policy.h"
 #include "kahypar/partition/coarsening/policies/rating_heavy_node_penalty_policy.h"
 #include "kahypar/partition/coarsening/policies/rating_score_policy.h"
 #include "kahypar/partition/coarsening/policies/rating_tie_breaking_policy.h"
+#include "kahypar/partition/coarsening/vertex_pair_coarsener_base.h"
 #include "kahypar/partition/coarsening/vertex_pair_rater.h"
 
 namespace kahypar {
