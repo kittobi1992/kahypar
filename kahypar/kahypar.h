@@ -164,50 +164,61 @@ REGISTER_DISPATCHED_COARSENER(CoarseningAlgorithm::ml_style,
                               meta::PolicyRegistry<AcceptancePolicy>::getInstance().getPolicy(
                                 context.coarsening.rating.acceptance_policy));
 
+REGISTER_DISPATCHED_COARSENER(CoarseningAlgorithm::algebraic_distance,
+                              AlgebraicDistanceCoarseningDispatcher,
+                              meta::PolicyRegistry<RatingFunction>::getInstance().getPolicy(
+                                context.coarsening.rating.rating_function),
+                              meta::PolicyRegistry<HeavyNodePenaltyPolicy>::getInstance().getPolicy(
+                                context.coarsening.rating.heavy_node_penalty_policy),
+                              meta::PolicyRegistry<CommunityPolicy>::getInstance().getPolicy(
+                                context.coarsening.rating.community_policy),
+                              meta::PolicyRegistry<AcceptancePolicy>::getInstance().getPolicy(
+                                context.coarsening.rating.acceptance_policy));
+
 
 // //////////////////////////////////////////////////////////////////////////////
 //                          Initial Partitioning Algorithms
 // //////////////////////////////////////////////////////////////////////////////
 using BFSInitialPartitionerBFS = BFSInitialPartitioner<BFSStartNodeSelectionPolicy<> >;
 using LPInitialPartitionerBFS_FM =
-        LabelPropagationInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                           FMGainComputationPolicy>;
+  LabelPropagationInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                     FMGainComputationPolicy>;
 using GHGInitialPartitionerBFS_FM_SEQ =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  FMGainComputationPolicy,
-                                                  SequentialQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            FMGainComputationPolicy,
+                                            SequentialQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_FM_GLO =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  FMGainComputationPolicy,
-                                                  GlobalQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            FMGainComputationPolicy,
+                                            GlobalQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_FM_RND =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  FMGainComputationPolicy,
-                                                  RoundRobinQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            FMGainComputationPolicy,
+                                            RoundRobinQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_MAXP_SEQ =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  MaxPinGainComputationPolicy,
-                                                  SequentialQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            MaxPinGainComputationPolicy,
+                                            SequentialQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_MAXP_GLO =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  MaxPinGainComputationPolicy,
-                                                  GlobalQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            MaxPinGainComputationPolicy,
+                                            GlobalQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_MAXP_RND =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  MaxPinGainComputationPolicy,
-                                                  RoundRobinQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            MaxPinGainComputationPolicy,
+                                            RoundRobinQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_MAXN_SEQ =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  MaxNetGainComputationPolicy,
-                                                  SequentialQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            MaxNetGainComputationPolicy,
+                                            SequentialQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_MAXN_GLO =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  MaxNetGainComputationPolicy,
-                                                  GlobalQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            MaxNetGainComputationPolicy,
+                                            GlobalQueueSelectionPolicy>;
 using GHGInitialPartitionerBFS_MAXN_RND =
-        GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
-                                                  MaxNetGainComputationPolicy,
-                                                  RoundRobinQueueSelectionPolicy>;
+  GreedyHypergraphGrowingInitialPartitioner<BFSStartNodeSelectionPolicy<>,
+                                            MaxNetGainComputationPolicy,
+                                            RoundRobinQueueSelectionPolicy>;
 REGISTER_INITIAL_PARTITIONER(InitialPartitionerAlgorithm::random,
                              RandomInitialPartitioner);
 REGISTER_INITIAL_PARTITIONER(InitialPartitionerAlgorithm::bfs, BFSInitialPartitionerBFS);

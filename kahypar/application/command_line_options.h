@@ -23,8 +23,8 @@
 #include <boost/program_options.hpp>
 
 #if defined(_MSC_VER)
-#include <Windows.h>
 #include <process.h>
+#include <Windows.h>
 #else
 #include <sys/ioctl.h>
 #endif
@@ -95,7 +95,8 @@ po::options_description createCoarseningOptionsDescription(Context& context,
     "Algorithm:\n"
     " - ml_style\n"
     " - heavy_full\n"
-    " - heavy_lazy")
+    " - heavy_lazy\n"
+    " - algebraic_distance")
     ("c-s",
     po::value<double>(&context.coarsening.max_allowed_weight_multiplier)->value_name("<double>"),
     "The maximum weight of a vertex in the coarsest hypergraph H is:\n"

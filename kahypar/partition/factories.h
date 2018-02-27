@@ -24,6 +24,7 @@
 #include "kahypar/meta/static_double_dispatch_factory.h"
 #include "kahypar/meta/static_multi_dispatch_factory.h"
 #include "kahypar/meta/typelist.h"
+#include "kahypar/partition/coarsening/algebraic_distance_coarsener.h"
 #include "kahypar/partition/coarsening/full_vertex_pair_coarsener.h"
 #include "kahypar/partition/coarsening/i_coarsener.h"
 #include "kahypar/partition/coarsening/lazy_vertex_pair_coarsener.h"
@@ -58,6 +59,11 @@ using RatingPolicies = meta::Typelist<RatingScorePolicies, HeavyNodePenaltyPolic
 using MLCoarseningDispatcher = meta::StaticMultiDispatchFactory<MLCoarsener,
                                                                 ICoarsener,
                                                                 RatingPolicies>;
+
+using AlgebraicDistanceCoarseningDispatcher = meta::StaticMultiDispatchFactory<
+  AlgebraicDistanceCoarsener,
+  ICoarsener,
+  RatingPolicies>;
 
 using FullCoarseningDispatcher = meta::StaticMultiDispatchFactory<FullVertexPairCoarsener,
                                                                   ICoarsener,

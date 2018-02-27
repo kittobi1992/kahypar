@@ -70,6 +70,7 @@ enum class CoarseningAlgorithm : uint8_t {
   heavy_lazy,
   ml_style,
   do_nothing,
+  algebraic_distance,
   UNDEFINED
 };
 
@@ -232,6 +233,7 @@ std::ostream& operator<< (std::ostream& os, const CoarseningAlgorithm& algo) {
     case CoarseningAlgorithm::heavy_lazy: return os << "heavy_lazy";
     case CoarseningAlgorithm::ml_style: return os << "ml_style";
     case CoarseningAlgorithm::do_nothing: return os << "do_nothing";
+    case CoarseningAlgorithm::algebraic_distance: return os << "algebraic_distance";
     case CoarseningAlgorithm::UNDEFINED: return os << "UNDEFINED";
       // omit default case to trigger compiler warning for missing cases
   }
@@ -385,6 +387,8 @@ static CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type
     return CoarseningAlgorithm::heavy_lazy;
   } else if (type == "ml_style") {
     return CoarseningAlgorithm::ml_style;
+  } else if (type == "algebraic_distance") {
+    return CoarseningAlgorithm::algebraic_distance;
   }
   std::cout << "Illegal option:" << type << std::endl;
   exit(0);
