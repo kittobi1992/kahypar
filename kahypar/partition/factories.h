@@ -21,7 +21,6 @@
 #pragma once
 
 #include "kahypar/meta/abstract_factory.h"
-#include "kahypar/meta/static_double_dispatch_factory.h"
 #include "kahypar/meta/static_multi_dispatch_factory.h"
 #include "kahypar/meta/typelist.h"
 #include "kahypar/partition/coarsening/algebraic_distance_coarsener.h"
