@@ -107,6 +107,7 @@ enum class InitialPartitionerAlgorithm : uint8_t {
   random,
   lp,
   pool,
+  flow_cutter,
   UNDEFINED
 };
 
@@ -287,6 +288,7 @@ std::ostream& operator<< (std::ostream& os, const InitialPartitionerAlgorithm& a
     case InitialPartitionerAlgorithm::random: return os << "random";
     case InitialPartitionerAlgorithm::lp: return os << "lp";
     case InitialPartitionerAlgorithm::pool: return os << "pool";
+    case InitialPartitionerAlgorithm::flow_cutter: return os << "flow_cutter";
     case InitialPartitionerAlgorithm::UNDEFINED: return os << "UNDEFINED";
       // omit default case to trigger compiler warning for missing cases
   }
@@ -470,6 +472,8 @@ static InitialPartitionerAlgorithm initialPartitioningAlgorithmFromString(const 
     return InitialPartitionerAlgorithm::random;
   } else if (mode == "pool") {
     return InitialPartitionerAlgorithm::pool;
+  } else if (mode == "flow_cutter") {
+    return InitialPartitionerAlgorithm::flow_cutter;
   }
   std::cout << "Illegal option:" << mode << std::endl;
   exit(0);

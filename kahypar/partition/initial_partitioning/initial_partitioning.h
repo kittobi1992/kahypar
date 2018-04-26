@@ -21,6 +21,7 @@
 #pragma once
 
 #include "kahypar/partition/initial_partitioning/bfs_initial_partitioner.h"
+#include "kahypar/partition/initial_partitioning/flow_cutter.h"
 #include "kahypar/partition/initial_partitioning/greedy_hypergraph_growing_initial_partitioner.h"
 #include "kahypar/partition/initial_partitioning/i_initial_partitioner.h"
 #include "kahypar/partition/initial_partitioning/label_propagation_initial_partitioner.h"
