@@ -95,8 +95,9 @@ static inline Context createCurrentBisectionContext(const Context& original_cont
   current_context.partition.epsilon = calculateRelaxedEpsilon(original_hypergraph.totalWeight(),
                                                               current_hypergraph.totalWeight(),
                                                               current_k, original_context);
-  ASSERT(original_context.partition.use_individual_part_weights ||
-         current_context.partition.epsilon > 0.0, "start partition already too imbalanced");
+  // TODO(schlag): This assertion might not hold for edge-balancing
+  // ASSERT(original_context.partition.use_individual_part_weights ||
+  //        current_context.partition.epsilon > 0.0, "start partition already too imbalanced");
 
   current_context.partition.total_graph_weight =
     current_hypergraph.totalWeight();

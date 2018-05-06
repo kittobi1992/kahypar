@@ -135,16 +135,20 @@ static inline double imbalance(const Hypergraph& hypergraph, const Context& cont
          == context.partition.perfect_balance_part_weights[1],
          "Imbalance cannot be calculated correctly");
 
+  const HypernodeWeight perfect_balance_part_weights =
+      ceil(hypergraph.totalWeight()
+           / static_cast<double>(context.partition.k));
+
   double max_balance = (hypergraph.partWeight(0) /
-                        static_cast<double>(context.partition.perfect_balance_part_weights[0]));
+                        static_cast<double>(perfect_balance_part_weights));
   for (PartitionID i = 1; i != context.partition.k; ++i) {
     // If k > 2, then perfect_balance_part_weights[0] ==
     // perfect_balance_part_weights[1] == perfect_balance_part_weights[i], because then we
     // to direct k-way partitioning and each part has the same perfect_balance weight and Lmax
     const double balance_i =
-      (hypergraph.partWeight(i) /
-       static_cast<double>(context.partition.perfect_balance_part_weights[
-                             context.partition.use_individual_part_weights ? i : 1]));
+        (hypergraph.partWeight(i) / static_cast<double>(perfect_balance_part_weights));
+       // static_cast<double>(context.partition.perfect_balance_part_weights[
+       //                       context.partition.use_individual_part_weights ? i : 1]));
     max_balance = std::max(max_balance, balance_i);
   }
 

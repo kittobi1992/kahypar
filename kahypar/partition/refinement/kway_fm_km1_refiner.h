@@ -228,7 +228,7 @@ class KWayKMinusOneRefiner final : public IRefiner,
                                                   from_part, to_part);
 
         current_imbalance = static_cast<double>(heaviest_part_weight) /
-                            ceil(static_cast<double>(_context.partition.total_graph_weight) /
+                            ceil(static_cast<double>(_hg.totalWeight()) /
                                  _context.partition.k) - 1.0;
 
         current_km1 -= max_gain;

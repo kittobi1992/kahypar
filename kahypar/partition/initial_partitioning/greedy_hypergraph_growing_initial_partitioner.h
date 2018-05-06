@@ -203,22 +203,23 @@ class GreedyHypergraphGrowingInitialPartitioner : public IInitialPartitioner,
         _pq.disablePart(current_id);
       }
 
-      ASSERT([&]() {
-          bool exist_unassigned_node = Base::getUnassignedNode() != kInvalidNode;
-          for (PartitionID part = 0; part < _context.initial_partitioning.k; ++part) {
-            if (!_pq.isEnabled(part) && part != _context.initial_partitioning.unassigned_part) {
-              if ((exist_unassigned_node && _pq.size(part) > 0) &&
-                  _hg.partWeight(part) + Base::getMaxHypernodeWeight()
-                  <= _context.initial_partitioning.upper_allowed_partition_weight[part]) {
-                LOG << V(part) << V(_hg.partWeight(part)) << V(_pq.isEnabled(part)) << V(_pq.size(part))
-                    << V(_context.initial_partitioning.upper_allowed_partition_weight[part]);
-                return false;
-              }
-            }
-          }
-          return true;
-        } (), "There is a PQ, which is disabled, but the hypernode with "
-             << "maximum weight can be placed inside this part!");
+      // TODO(schlag): This assertion only makes sense for the case of hypernode-balancing.
+      // ASSERT([&]() {
+      //     bool exist_unassigned_node = Base::getUnassignedNode() != kInvalidNode;
+      //     for (PartitionID part = 0; part < _context.initial_partitioning.k; ++part) {
+      //       if (!_pq.isEnabled(part) && part != _context.initial_partitioning.unassigned_part) {
+      //         if ((exist_unassigned_node && _pq.size(part) > 0) &&
+      //             _hg.partWeight(part) + Base::getMaxHypernodeWeight()
+      //             <= _context.initial_partitioning.upper_allowed_partition_weight[part]) {
+      //           LOG << V(part) << V(_hg.partWeight(part)) << V(_pq.isEnabled(part)) << V(_pq.size(part))
+      //               << V(_context.initial_partitioning.upper_allowed_partition_weight[part]);
+      //           return false;
+      //         }
+      //       }
+      //     }
+      //     return true;
+      //   } (), "There is a PQ, which is disabled, but the hypernode with "
+      //        << "maximum weight can be placed inside this part!");
 
       ASSERT([&]() {
           for (PartitionID part = 0; part < _context.initial_partitioning.k; ++part) {

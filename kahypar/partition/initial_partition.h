@@ -166,7 +166,7 @@ static inline void partition(Hypergraph& hg, const Context& context) {
   std::vector<PartitionID> best_balanced_partition(
     extracted_init_hypergraph.first->initialNumNodes(), 0);
 
-  double fixed_vertex_subgraph_imbalance = 0.0;
+  double fixed_vertex_subgraph_imbalance = -1.0;
   if (hg.numFixedVertices() > 0) {
     fixed_vertex_subgraph_imbalance = metrics::imbalanceFixedVertices(hg, context.partition.k);
   }

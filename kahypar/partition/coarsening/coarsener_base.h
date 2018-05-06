@@ -143,16 +143,14 @@ class CoarsenerBase {
     const HyperedgeWeight old_cut = current_metrics.cut;
     const HyperedgeWeight old_km1 = current_metrics.km1;
     bool improvement_found = refiner.refine(refinement_nodes,
-                                            { _context.partition.max_part_weights[0]
-                                              + _max_hn_weights.back().max_weight,
-                                              _context.partition.max_part_weights[1]
-                                              + _max_hn_weights.back().max_weight },
+                                            { _context.partition.max_part_weights[0],
+                                                  _context.partition.max_part_weights[1]},
                                             current_changes,
                                             current_metrics);
 
     ASSERT(_context.partition.objective != Objective::cut ||
            (current_metrics.cut <= old_cut && current_metrics.cut == metrics::hyperedgeCut(_hg)),
-           V(current_metrics.cut) << V(old_cut));
+           V(current_metrics.cut) << V(old_cut) << V(metrics::hyperedgeCut(_hg)));
     // Km1 is optimized indirectly in recursive bisection mode via cut-net splitting and optimizing
     // cut. In this case current_metrics.km1 is not used.
     ASSERT((_context.partition.mode != Mode::direct_kway ||

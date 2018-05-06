@@ -564,7 +564,10 @@ class GenericHypergraph {
       has_hyperedge_weights = true;
       for (HyperedgeID i = 0; i < _num_hyperedges; ++i) {
         hyperedge(i).setWeight((*hyperedge_weights)[i]);
+        _total_weight += (*hyperedge_weights)[i];
       }
+    } else {
+      _total_weight = _num_hyperedges;
     }
 
     bool has_hypernode_weights = false;
@@ -572,10 +575,10 @@ class GenericHypergraph {
       has_hypernode_weights = true;
       for (HypernodeID i = 0; i < _num_hypernodes; ++i) {
         hypernode(i).setWeight((*hypernode_weights)[i]);
-        _total_weight += (*hypernode_weights)[i];
+        //        _total_weight += (*hypernode_weights)[i];
       }
     } else {
-      _total_weight = _num_hypernodes;
+      //_total_weight = _num_hypernodes;
     }
 
     if (has_hyperedge_weights && has_hypernode_weights) {
@@ -1233,6 +1236,22 @@ class GenericHypergraph {
     }
   }
 
+    void unsetNodePart(const HypernodeID hn, const PartitionID id) {
+    ASSERT(!hypernode(hn).isDisabled(), "Hypernode" << hn << "is disabled");
+    ASSERT(partID(hn) == id, "Hypernode" << hn << "is not unpartitioned: "
+                                                        << partID(hn));
+    ASSERT(id < _k && id != kInvalidPartition, "Invalid part:" << id);
+    ASSERT(!isFixedVertex(hn) || fixedVertexPartID(hn) == id,
+           "Fixed vertex " << hn << " assigned to wrong part " << id);
+    hypernode(hn).part_id = -1;
+    //_part_info[id].weight += nodeWeight(u);
+    --_part_info[id].size;
+    for (const HyperedgeID& he : incidentEdges(hn)) {
+      decrementPinCountInPart(he, id);
+    }
+    }
+
+
   /*!
    * Set block ID of hypernode hn to a fixed block of the partition.
    * Such hypernodes should be placed in block id in the final partition.
@@ -1346,6 +1365,10 @@ class GenericHypergraph {
    */
   void removeEdge(const HyperedgeID he) {
     ASSERT(!hyperedge(he).isDisabled(), "Hyperedge is disabled!");
+    if (edgeSize(he) == 1) {
+      _total_weight -= edgeWeight(he);
+    }
+
     for (const HypernodeID& pin : pins(he)) {
       removeIncidentEdgeFromHypernode(he, pin);
       --_current_num_pins;
@@ -1367,6 +1390,9 @@ class GenericHypergraph {
   void restoreEdge(const HyperedgeID he) {
     ASSERT(hyperedge(he).isDisabled(), "Hyperedge is enabled!");
     enableEdge(he);
+    if (edgeSize(he) == 1) {
+      _total_weight += edgeWeight(he);
+    }
     resetPartitionPinCounts(he);
     for (const HypernodeID& pin : pins(he)) {
       ASSERT(std::count(_incidence_array.begin() + hypernode(pin).firstEntry(),
@@ -1405,7 +1431,7 @@ class GenericHypergraph {
       DBG << "re-adding pin" << pin << "to HE" << he;
       hypernode(pin).incrementSize();
       if (partID(pin) != kInvalidPartition) {
-        incrementPinCountInPart(he, partID(pin));
+        incrementPinCountInPart(he, partID(pin), false);
       }
 
       if (connectivity(old_representative) > 1) {
@@ -1862,7 +1888,7 @@ class GenericHypergraph {
     ASSERT(id < _k && id != kInvalidPartition, "Part ID" << id << "out of bounds!");
     ASSERT(hypernode(u).part_id == kInvalidPartition, "HN" << u << "is already assigned to part" << id);
     hypernode(u).part_id = id;
-    _part_info[id].weight += nodeWeight(u);
+    //_part_info[id].weight += nodeWeight(u);
     ++_part_info[id].size;
   }
 
@@ -1873,9 +1899,9 @@ class GenericHypergraph {
     ASSERT(to < _k && to != kInvalidPartition, "Part ID" << to << "out of bounds!");
     ASSERT(hypernode(u).part_id == from, "HN" << u << "is not in part" << from);
     hypernode(u).part_id = to;
-    _part_info[from].weight -= nodeWeight(u);
+    //_part_info[from].weight -= nodeWeight(u);
     --_part_info[from].size;
-    _part_info[to].weight += nodeWeight(u);
+    //_part_info[to].weight += nodeWeight(u);
     ++_part_info[to].size;
   }
 
@@ -1892,12 +1918,15 @@ class GenericHypergraph {
     if (connectivity_decreased) {
       _connectivity_sets[he].remove(id);
       hyperedge(he).connectivity -= 1;
+      if (hyperedge(he).connectivity == 1) {
+        _part_info[*connectivitySet(he).begin()].weight += edgeWeight(he);
+      }
     }
     return connectivity_decreased;
   }
 
   // ! Increments the number of pins of a hyperedge in a block by one
-  bool incrementPinCountInPart(const HyperedgeID he, const PartitionID id) {
+  bool incrementPinCountInPart(const HyperedgeID he, const PartitionID id, const bool x = true) {
     ASSERT(!hyperedge(he).isDisabled(), "Hyperedge" << he << "is disabled");
     ASSERT(pinCountInPart(he, id) <= edgeSize(he),
            "HE" << he << ": pin_count[" << id << "]=" << pinCountInPart(he, id)
@@ -1908,6 +1937,13 @@ class GenericHypergraph {
     const bool connectivity_increased = _pins_in_part[offset] == 1;
     if (connectivity_increased) {
       hyperedge(he).connectivity += 1;
+      if (x) {
+        if (hyperedge(he).connectivity == 2) {
+        _part_info[*connectivitySet(he).begin()].weight -= edgeWeight(he);
+      } else if (hyperedge(he).connectivity == 1) {
+        _part_info[id].weight += edgeWeight(he);
+      }
+      }
       _connectivity_sets[he].add(id);
     }
     return connectivity_increased;
@@ -2305,6 +2341,7 @@ reindex(const Hypergraph& hypergraph) {
   HypernodeID pin_index = 0;
   for (const HyperedgeID& he : hypergraph.edges()) {
     reindexed_hypergraph->_hyperedges.emplace_back(0, 0, hypergraph.edgeWeight(he));
+    reindexed_hypergraph->_total_weight += hypergraph.edgeWeight(he);
     ++reindexed_hypergraph->_num_hyperedges;
     reindexed_hypergraph->_hyperedges[num_hyperedges].setFirstEntry(pin_index);
     for (const HypernodeID& pin : hypergraph.pins(he)) {
@@ -2336,13 +2373,13 @@ reindex(const Hypergraph& hypergraph) {
       reindexed_hypergraph->hypernode(i).firstInvalidEntry());
     reindexed_hypergraph->hypernode(i).setSize(0);
     reindexed_hypergraph->hypernode(i).setWeight(hypergraph.nodeWeight(reindexed_to_original[i]));
-    reindexed_hypergraph->_total_weight += reindexed_hypergraph->hypernode(i).weight();
+    //reindexed_hypergraph->_total_weight += reindexed_hypergraph->hypernode(i).weight();
   }
   reindexed_hypergraph->hypernode(num_hypernodes - 1).setSize(0);
   reindexed_hypergraph->hypernode(num_hypernodes - 1).setWeight(
     hypergraph.nodeWeight(reindexed_to_original[num_hypernodes - 1]));
-  reindexed_hypergraph->_total_weight +=
-    reindexed_hypergraph->hypernode(num_hypernodes - 1).weight();
+  // reindexed_hypergraph->_total_weight +=
+  //   reindexed_hypergraph->hypernode(num_hypernodes - 1).weight();
 
   for (const HyperedgeID& he : reindexed_hypergraph->edges()) {
     for (const HypernodeID& pin : reindexed_hypergraph->pins(he)) {
@@ -2502,14 +2539,15 @@ static void setupInternalStructure(const Hypergraph& reference,
     subhypergraph.hypernode(i + 1).setFirstEntry(subhypergraph.hypernode(i).firstInvalidEntry());
     subhypergraph.hypernode(i).setSize(0);
     subhypergraph.hypernode(i).setWeight(reference.nodeWeight(mapping[i]));
-    subhypergraph._total_weight += subhypergraph.hypernode(i).weight();
+    // subhypergraph._total_weight += subhypergraph.hypernode(i).weight();
   }
   subhypergraph.hypernode(num_hypernodes - 1).setSize(0);
   subhypergraph.hypernode(num_hypernodes - 1).setWeight(
     reference.nodeWeight(mapping[num_hypernodes - 1]));
-  subhypergraph._total_weight += subhypergraph.hypernode(num_hypernodes - 1).weight();
+  // subhypergraph._total_weight += subhypergraph.hypernode(num_hypernodes - 1).weight();
 
   for (const HyperedgeID& he : subhypergraph.edges()) {
+    subhypergraph._total_weight += subhypergraph.edgeWeight(he);
     for (const HypernodeID& pin : subhypergraph.pins(he)) {
       subhypergraph._incidence_array[subhypergraph.hypernode(pin).firstInvalidEntry()] = he;
       subhypergraph.hypernode(pin).incrementSize();

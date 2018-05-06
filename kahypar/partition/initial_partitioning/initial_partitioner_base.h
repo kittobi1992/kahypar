@@ -220,10 +220,9 @@ class InitialPartitionerBase {
         }
         improvement_found =
           refiner->refine(refinement_nodes,
-                          { _context.initial_partitioning.upper_allowed_partition_weight[0]
-                            + _max_hypernode_weight,
-                            _context.initial_partitioning.upper_allowed_partition_weight[1]
-                            + _max_hypernode_weight }, changes, current_metrics);
+                          { _context.initial_partitioning.upper_allowed_partition_weight[0],
+                            _context.initial_partitioning.upper_allowed_partition_weight[1] },
+                          changes, current_metrics);
         ASSERT(current_metrics.cut <= old_cut, "Cut increased during uncontraction");
         ASSERT(current_metrics.cut == metrics::hyperedgeCut(_hg), "Inconsistent cut values");
 #ifndef NDEBUG
@@ -237,12 +236,23 @@ class InitialPartitionerBase {
 
 
   bool assignHypernodeToPartition(const HypernodeID hn, const PartitionID target_part) {
-    if (_hg.partWeight(target_part) + _hg.nodeWeight(hn)
-        <= _context.initial_partitioning.upper_allowed_partition_weight[target_part]) {
+    // simulate move to know the effect on balance
+    bool feasible = false;
+    const PartitionID from_part = _hg.partID(hn);
+    if (from_part == -1) {
+      _hg.setNodePart(hn, target_part);
+      feasible = _hg.partWeight(target_part) <= _context.initial_partitioning.upper_allowed_partition_weight[target_part];
+      _hg.unsetNodePart(hn, target_part);
+    } else {
+      _hg.changeNodePart(hn, from_part, target_part);
+      feasible = _hg.partWeight(target_part) <= _context.initial_partitioning.upper_allowed_partition_weight[target_part] && (_hg.partSize(from_part) - 1 != 0);
+      _hg.changeNodePart(hn, target_part, from_part);
+    }
+
+    if (feasible) {
       if (_hg.partID(hn) == -1) {
         _hg.setNodePart(hn, target_part);
       } else {
-        const PartitionID from_part = _hg.partID(hn);
         if (from_part != target_part && _hg.partSize(from_part) - 1 > 0) {
           _hg.changeNodePart(hn, from_part, target_part);
         } else {

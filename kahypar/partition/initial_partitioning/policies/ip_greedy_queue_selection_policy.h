@@ -136,8 +136,14 @@ class SequentialQueueSelectionPolicy {
         ASSERT(_pq.isEnabled(current_id), "PQ" << current_id << "should be enabled!");
         _pq.deleteMaxFromPartition(current_hn, current_gain, current_id);
 
-        if (hg.partWeight(current_id) + hg.nodeWeight(current_hn)
-            > context.initial_partitioning.upper_allowed_partition_weight[current_id]) {
+
+        const PartitionID from_part = hg.partID(current_hn);
+        ASSERT(from_part == getOperatingUnassignedPart());
+        hg.changeNodePart(current_hn, from_part, current_id);
+        const bool feasible = hg.partWeight(current_id) <= context.initial_partitioning.upper_allowed_partition_weight[current_id];
+        hg.changeNodePart(current_hn, current_id, from_part);
+
+        if (!feasible) {
           _pq.insert(current_hn, current_id, current_gain);
           next_part = true;
         }
