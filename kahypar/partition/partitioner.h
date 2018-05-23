@@ -67,7 +67,9 @@ static inline void partition(Hypergraph& hypergraph, const Context& context) {
       } ());
   switch (context.partition.mode) {
     case Mode::recursive_bisection:
+
       recursive_bisection::partition(hypergraph, context);
+
       break;
     case Mode::direct_kway:
       direct_kway::partition(hypergraph, context);
@@ -138,17 +140,23 @@ class Partitioner {
 
 inline void Partitioner::configurePreprocessing(const Hypergraph& hypergraph,
                                                 Context& context) {
-  if (context.preprocessing.enable_min_hash_sparsifier) {
-    // determine whether or not to apply the sparsifier
-    std::vector<HypernodeID> he_sizes;
-    he_sizes.reserve(hypergraph.currentNumEdges());
-    for (const auto& he : hypergraph.edges()) {
-      he_sizes.push_back(hypergraph.edgeSize(he));
-    }
-    std::sort(he_sizes.begin(), he_sizes.end());
-    if (kahypar::math::median(he_sizes) >=
-        context.preprocessing.min_hash_sparsifier.min_median_he_size) {
-      context.preprocessing.min_hash_sparsifier.is_active = true;
+  // Don't use sparsification by default
+  context.preprocessing.min_hash_sparsifier.is_active = false;
+
+  if (!context.partition_evolutionary ||
+      context.evolutionary.action.decision() == EvoDecision::normal) {
+    if (context.preprocessing.enable_min_hash_sparsifier) {
+      // determine whether or not to apply the sparsifier
+      std::vector<HypernodeID> he_sizes;
+      he_sizes.reserve(hypergraph.currentNumEdges());
+      for (const auto& he : hypergraph.edges()) {
+        he_sizes.push_back(hypergraph.edgeSize(he));
+      }
+      std::sort(he_sizes.begin(), he_sizes.end());
+      if (kahypar::math::median(he_sizes) >=
+          context.preprocessing.min_hash_sparsifier.min_median_he_size) {
+        context.preprocessing.min_hash_sparsifier.is_active = true;
+      }
     }
   }
 
@@ -165,8 +173,6 @@ inline void Partitioner::configurePreprocessing(const Hypergraph& hypergraph,
 }
 
 inline void Partitioner::setupContext(const Hypergraph& hypergraph, Context& context) {
-  context.partition.total_graph_weight = hypergraph.totalWeight();
-
   context.coarsening.contraction_limit =
     context.coarsening.contraction_limit_multiplier * context.partition.k;
 
@@ -175,21 +181,30 @@ inline void Partitioner::setupContext(const Hypergraph& hypergraph, Context& con
     / context.coarsening.contraction_limit;
 
   context.coarsening.max_allowed_node_weight = ceil(context.coarsening.hypernode_weight_fraction
-                                                    * context.partition.total_graph_weight);
+                                                    * hypergraph.totalWeight());
 
   if (context.partition.use_individual_part_weights) {
     context.partition.perfect_balance_part_weights = context.partition.max_part_weights;
   } else {
-    context.partition.perfect_balance_part_weights[0] = ceil(
-      context.partition.total_graph_weight
-      / static_cast<double>(context.partition.k));
-    context.partition.perfect_balance_part_weights[1] =
-      context.partition.perfect_balance_part_weights[0];
-
-    context.partition.max_part_weights[0] = (1 + context.partition.epsilon)
-                                            * context.partition.perfect_balance_part_weights[0];
-    context.partition.max_part_weights[1] = context.partition.max_part_weights[0];
+    context.partition.perfect_balance_part_weights.clear();
+    context.partition.perfect_balance_part_weights.push_back(ceil(
+                                                               hypergraph.totalWeight()
+                                                               / static_cast<double>(context.partition.k)));
+    for (PartitionID part = 1; part != context.partition.k; ++part) {
+      context.partition.perfect_balance_part_weights.push_back(
+        context.partition.perfect_balance_part_weights[0]);
+    }
+    context.partition.max_part_weights.clear();
+    context.partition.max_part_weights.push_back((1 + context.partition.epsilon)
+                                                 * context.partition.perfect_balance_part_weights[0]);
+    for (PartitionID part = 1; part != context.partition.k; ++part) {
+      context.partition.max_part_weights.push_back(context.partition.max_part_weights[0]);
+    }
   }
+  ASSERT(context.partition.perfect_balance_part_weights.size() ==
+         static_cast<size_t>(context.partition.k));
+  ASSERT(context.partition.max_part_weights.size() ==
+         static_cast<size_t>(context.partition.k));
 }
 
 inline void Partitioner::sanitize(Hypergraph& hypergraph, const Context& context) {
@@ -208,7 +223,17 @@ inline void Partitioner::preprocess(Hypergraph& hypergraph, const Context& conte
   // bisection. Therefore the 'top-level' preprocessing is disabled in this case.
   if (context.partition.mode != Mode::recursive_bisection &&
       context.preprocessing.enable_community_detection) {
-    detectCommunities(hypergraph, context);
+    // Repeated executions of non-evolutionary KaHyPar also re-use the community structure.
+    if (context.evolutionary.communities.empty() ||
+        context.preprocessing.min_hash_sparsifier.is_active) {
+      // If sparsification is enabled, we can't reuse the community structure
+      // since each sparsification call might return a different hypergraph.
+      detectCommunities(hypergraph, context);
+      context.evolutionary.communities = hypergraph.communities();
+    } else {
+      ASSERT(hypergraph.currentNumNodes() == context.getCommunities().size());
+      hypergraph.setCommunities(context.getCommunities());
+    }
   }
 }
 
@@ -259,11 +284,22 @@ inline void Partitioner::partition(Hypergraph& hypergraph, Context& context) {
   sanitize(hypergraph, context);
 
   if (context.preprocessing.min_hash_sparsifier.is_active) {
+    ALWAYS_ASSERT(!context.partition_evolutionary ||
+                  context.evolutionary.action.decision() == EvoDecision::normal,
+                  "Sparsification is only allowed for non-evolutionary partitioning "
+                  "and while filling the initial population of KaHyParE.");
     Hypergraph sparseHypergraph;
     preprocess(hypergraph, sparseHypergraph, context);
     ASSERT(sparseHypergraph.numFixedVertices() == hypergraph.numFixedVertices());
     partition::partition(sparseHypergraph, context);
+    hypergraph.reset();
     postprocess(hypergraph, sparseHypergraph, context);
+
+    // If the sparsifier is active, we can't reuse the community structure, because
+    // each sparsification call might return a different hypergraph due to randomization.
+    // Therefore we have to make sure that the community structure is not used somewhere
+    // outside of the partitioner.
+    context.evolutionary.communities.clear();
   } else {
     preprocess(hypergraph, context);
     partition::partition(hypergraph, context);

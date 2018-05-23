@@ -27,6 +27,8 @@
 #include "kahypar/datastructure/kway_priority_queue.h"
 #include "kahypar/definitions.h"
 #include "kahypar/partition/context.h"
+#include "kahypar/partition/refinement/move.h"
+#include "kahypar/partition/refinement/uncontraction_gain_changes.h"
 
 namespace kahypar {
 struct RollbackInfo {
@@ -103,7 +105,7 @@ class FMRefinerBase {
     return feasible;
 
     // return (_hg.partWeight(to_part) + _hg.nodeWeight(max_gain_node)
-    //         <= ) && (_hg.partSize(from_part) - 1 != 0);
+    //         <= _context.partition.max_part_weights[to_part]) && (_hg.partSize(from_part) - 1 != 0);
   }
 
   void moveHypernode(const HypernodeID hn, const PartitionID from_part,
@@ -112,16 +114,6 @@ class FMRefinerBase {
     DBG << "moving HN" << hn << "from" << from_part
         << "to" << to_part << "(weight=" << _hg.nodeWeight(hn) << ")";
     _hg.changeNodePart(hn, from_part, to_part);
-  }
-
-  PartitionID heaviestPart() const {
-    PartitionID heaviest_part = 0;
-    for (PartitionID part = 1; part < _context.partition.k; ++part) {
-      if (_hg.partWeight(part) > _hg.partWeight(heaviest_part)) {
-        heaviest_part = part;
-      }
-    }
-    return heaviest_part;
   }
 
   void activateAdjacentFreeVertices(const std::vector<HypernodeID>& refinement_nodes) {
@@ -153,6 +145,33 @@ class FMRefinerBase {
     }
   }
 
+  void performMovesAndUpdateCache(const std::vector<Move>& moves,
+                                  std::vector<HypernodeID>& refinement_nodes,
+                                  const UncontractionGainChanges&) {
+    reset();
+    Derived* derived = static_cast<Derived*>(this);
+    for (const HypernodeID& hn : refinement_nodes) {
+      derived->_gain_cache.clear(hn);
+      derived->initializeGainCacheFor(hn);
+    }
+    for (const auto& move : moves) {
+      DBG << V(move.hn) << V(move.from) << V(move.to);
+      if (!derived->_gain_cache.entryExists(move.hn, move.to)) {
+        derived->_gain_cache.initializeEntry(move.hn,
+                                             move.to,
+                                             derived->gainInducedByHypergraph(move.hn,
+                                                                              move.to));
+      }
+      _hg.changeNodePart(move.hn, move.from, move.to);
+      _hg.activate(move.hn);
+      _hg.mark(move.hn);
+      derived->updateNeighboursGainCacheOnly(move.hn, move.from, move.to);
+    }
+    derived->_gain_cache.resetDelta();
+    derived->ASSERT_THAT_GAIN_CACHE_IS_VALID();
+  }
+
+
   template <typename GainCache>
   void removeHypernodeMovementsFromPQ(const HypernodeID hn, const GainCache& gain_cache) {
     if (_hg.active(hn)) {
@@ -170,22 +189,6 @@ class FMRefinerBase {
           return true;
         } (), V(hn));
     }
-  }
-
-
-  void reCalculateHeaviestPartAndItsWeight(PartitionID& heaviest_part,
-                                           HypernodeWeight& heaviest_part_weight,
-                                           const PartitionID from_part,
-                                           const PartitionID to_part) const {
-    if (heaviest_part == from_part) {
-      heaviest_part = heaviestPart();
-      heaviest_part_weight = _hg.partWeight(heaviest_part);
-    } else if (_hg.partWeight(to_part) > heaviest_part_weight) {
-      heaviest_part = to_part;
-      heaviest_part_weight = _hg.partWeight(to_part);
-    }
-    ASSERT(heaviest_part_weight == _hg.partWeight(heaviestPart()),
-           V(heaviest_part) << V(heaviestPart()));
   }
 
   void reset() {

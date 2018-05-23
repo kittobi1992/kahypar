@@ -193,7 +193,6 @@ inline void printPartSizesAndWeights(const Hypergraph& hypergraph) {
   }
 }
 
-
 inline void printPartitioningResults(const Hypergraph& hypergraph,
                                      const Context& context,
                                      const std::chrono::duration<double>& elapsed_seconds) {
@@ -353,7 +352,13 @@ static inline void printLocalSearchBanner(const Context& context) {
     LOG << "********************************************************************************";
   }
 }
-
+static inline void printPopulationBanner(const Context& context) {
+  if (context.partition.verbose_output && context.type == ContextType::main) {
+    LOG << "\n********************************************************************************";
+    LOG << "*                                Population...                                 *";
+    LOG << "********************************************************************************";
+  }
+}
 static inline void printVcycleBanner(const Context& context) {
   if (context.partition.verbose_output && context.type == ContextType::main) {
     if (context.partition.verbose_output) {

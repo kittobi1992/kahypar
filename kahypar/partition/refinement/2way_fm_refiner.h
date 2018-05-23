@@ -157,15 +157,14 @@ class TwoWayFMRefiner final : public IRefiner,
 
   void performMovesAndUpdateCacheImpl(const std::vector<Move>& moves,
                                       std::vector<HypernodeID>& refinement_nodes,
-                                      const UncontractionGainChanges& uncontraction_changes,
-                                      Hypergraph& hypergraph) override final {
+                                      const UncontractionGainChanges& uncontraction_changes) override final {
     updateGainCacheAfterUncontraction(refinement_nodes, uncontraction_changes);
     for (const auto& move : moves) {
-      hypergraph.changeNodePart(move.hn, move.from, move.to);
+      _hg.changeNodePart(move.hn, move.from, move.to);
       const Gain temp = _gain_cache.value(move.hn);
       ASSERT(-temp == computeGain(move.hn), V(move.hn) << V(-temp) << V(computeGain(move.hn)));
       _gain_cache.setNotCached(move.hn);
-      for (const HyperedgeID& he : hypergraph.incidentEdges(move.hn)) {
+      for (const HyperedgeID& he : _hg.incidentEdges(move.hn)) {
         deltaUpdate<  /*update pq */ false>(move.from, move.to, he);
       }
       _gain_cache.setValue(move.hn, -temp);
@@ -222,8 +221,8 @@ class TwoWayFMRefiner final : public IRefiner,
       // max_allowed_part_weights and therefore might not be able to always activate some nodes
       // because the balance constraint is tighter.
       // ASSERT((_context.partition.max_part_weights[0] != _context.partition.max_part_weights[1]) ||
-      //        _hg.isFixedVertex(hn) ||
-      //        (!_hg.isBorderNode(hn) || _pq.isEnabled(1 - _hg.partID(hn))), V(hn));
+      // _hg.isFixedVertex(hn) || _context.partition.use_individual_part_weights ||
+      // (!_hg.isBorderNode(hn) || _pq.isEnabled(1 - _hg.partID(hn))), V(hn));
     }
 
     // Activate all adjacent free vertices of a fixed vertex in refinement_nodes

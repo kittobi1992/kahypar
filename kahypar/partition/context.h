@@ -27,9 +27,11 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "kahypar/definitions.h"
 #include "kahypar/partition/context_enum_classes.h"
+#include "kahypar/partition/evolutionary/action.h"
 #include "kahypar/utils/stats.h"
 
 namespace kahypar {
@@ -118,8 +120,9 @@ struct RatingParameters {
   CommunityPolicy community_policy = CommunityPolicy::UNDEFINED;
   HeavyNodePenaltyPolicy heavy_node_penalty_policy = HeavyNodePenaltyPolicy::UNDEFINED;
   AcceptancePolicy acceptance_policy = AcceptancePolicy::UNDEFINED;
+  RatingPartitionPolicy partition_policy = RatingPartitionPolicy::normal;
   FixVertexContractionAcceptancePolicy fixed_vertex_acceptance_policy =
-                                       FixVertexContractionAcceptancePolicy::UNDEFINED;
+    FixVertexContractionAcceptancePolicy::UNDEFINED;
 };
 
 inline std::ostream& operator<< (std::ostream& str, const RatingParameters& params) {
@@ -128,6 +131,7 @@ inline std::ostream& operator<< (std::ostream& str, const RatingParameters& para
   str << "    Use Community Structure:          " << params.community_policy << std::endl;
   str << "    Heavy Node Penalty:               " << params.heavy_node_penalty_policy << std::endl;
   str << "    Acceptance Policy:                " << params.acceptance_policy << std::endl;
+  str << "    Partition Policy:                 " << params.partition_policy << std::endl;
   str << "    Fixed Vertex Acceptance Policy:   " << params.fixed_vertex_acceptance_policy << std::endl;
   return str;
 }
@@ -205,6 +209,7 @@ struct LocalSearchParameters {
   RefinementAlgorithm algorithm = RefinementAlgorithm::UNDEFINED;
   int iterations_per_level = std::numeric_limits<int>::max();
 };
+
 
 inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters& params) {
   str << "Local Search Parameters:" << std::endl;
@@ -304,14 +309,11 @@ struct PartitioningParameters {
   PartitionID rb_upper_k = 0;
   int seed = 0;
   uint32_t global_search_iterations = std::numeric_limits<uint32_t>::max();
+  int time_limit = 0;
+
   mutable uint32_t current_v_cycle = 0;
-  std::vector<HypernodeWeight> perfect_balance_part_weights { {
-                                                                std::numeric_limits<HypernodeWeight>::max(),
-                                                                std::numeric_limits<HypernodeWeight>::max()
-                                                              } };
-  std::vector<HypernodeWeight> max_part_weights { { std::numeric_limits<HypernodeWeight>::max(),
-                                                    std::numeric_limits<HypernodeWeight>::max() } };
-  HypernodeWeight total_graph_weight = std::numeric_limits<HypernodeWeight>::max();
+  std::vector<HypernodeWeight> perfect_balance_part_weights;
+  std::vector<HypernodeWeight> max_part_weights;
   HyperedgeID hyperedge_size_threshold = std::numeric_limits<HypernodeID>::max();
 
   bool verbose_output = false;
@@ -337,26 +339,64 @@ inline std::ostream& operator<< (std::ostream& str, const PartitioningParameters
   str << "  epsilon:                            " << params.epsilon << std::endl;
   str << "  seed:                               " << params.seed << std::endl;
   str << "  # V-cycles:                         " << params.global_search_iterations << std::endl;
+  str << "  time limit:                         " << params.time_limit << "s" << std::endl;
   str << "  hyperedge size threshold:           " << params.hyperedge_size_threshold << std::endl;
-  str << "  total hypergraph weight:            " << params.total_graph_weight << std::endl;
   str << "  use individual block weights:       " << std::boolalpha
       << params.use_individual_part_weights << std::endl;
+  if (params.use_individual_part_weights) {
+    for (PartitionID i = 0; i < params.k; ++i) {
+      str << "  L_opt" << i << ":                             " << params.perfect_balance_part_weights[i]
+          << std::endl;
+    }
+  } else {
+    str << "  L_opt" << ":                              " << params.perfect_balance_part_weights[0]
+        << std::endl;
+  }
   if (params.use_individual_part_weights) {
     for (PartitionID i = 0; i < params.k; ++i) {
       str << "  L_max" << i << ":                             " << params.max_part_weights[i]
           << std::endl;
     }
   } else {
-    str << "  L_opt0:                             " << params.perfect_balance_part_weights[0]
+    str << "  L_max" << ":                              " << params.max_part_weights[0]
         << std::endl;
-    str << "  L_opt1:                             " << params.perfect_balance_part_weights[1]
-        << std::endl;
-    str << "  L_max0:                             " << params.max_part_weights[0] << std::endl;
-    str << "  L_max1:                             " << params.max_part_weights[1] << std::endl;
   }
   return str;
 }
+struct EvolutionaryParameters {
+  size_t population_size;
+  float mutation_chance;
+  float edge_frequency_chance;
+  EvoReplaceStrategy replace_strategy;
+  mutable EvoCombineStrategy combine_strategy = EvoCombineStrategy::UNDEFINED;
+  mutable EvoMutateStrategy mutate_strategy = EvoMutateStrategy::UNDEFINED;
+  int diversify_interval;  // -1 disables diversification
+  double gamma;
+  size_t edge_frequency_amount;
+  bool dynamic_population_size;
+  float dynamic_population_amount_of_time;
+  bool random_combine_strategy;
+  mutable int iteration;
+  mutable Action action;
+  const std::vector<PartitionID>* parent1 = nullptr;
+  const std::vector<PartitionID>* parent2 = nullptr;
+  mutable std::vector<size_t> edge_frequency;
+  mutable std::vector<ClusterID> communities;
+  bool unlimited_coarsening_contraction;
+  bool random_vcycles;
+};
 
+inline std::ostream& operator<< (std::ostream& str, const EvolutionaryParameters& params) {
+  str << "Evolutionary Parameters:              " << std::endl;
+  str << "  Population Size:                    " << params.population_size << std::endl;
+  str << "  Mutation Chance                     " << params.mutation_chance << std::endl;
+  str << "  Edge Frequency Chance               " << params.edge_frequency_chance << std::endl;
+  str << "  Replace Strategy                    " << params.replace_strategy << std::endl;
+  str << "  Combine Strategy                    " << params.combine_strategy << std::endl;
+  str << "  Mutation Strategy                   " << params.mutate_strategy << std::endl;
+  str << "  Diversification Interval            " << params.diversify_interval << std::endl;
+  return str;
+}
 
 class Context {
  public:
@@ -367,8 +407,10 @@ class Context {
   CoarseningParameters coarsening { };
   InitialPartitioningParameters initial_partitioning { };
   LocalSearchParameters local_search { };
+  EvolutionaryParameters evolutionary { };
   ContextType type = ContextType::main;
   mutable PartitioningStats stats;
+  bool partition_evolutionary = false;
 
   Context() :
     stats(*this) { }
@@ -379,11 +421,19 @@ class Context {
     coarsening(other.coarsening),
     initial_partitioning(other.initial_partitioning),
     local_search(other.local_search),
+    evolutionary(other.evolutionary),
     type(other.type),
-    stats(*this, &other.stats.topLevel()) { }
+    stats(*this, &other.stats.topLevel()),
+    partition_evolutionary(other.partition_evolutionary) { }
+
+  Context& operator= (const Context&) = delete;
 
   bool isMainRecursiveBisection() const {
     return partition.mode == Mode::recursive_bisection && type == ContextType::main;
+  }
+
+  std::vector<ClusterID> getCommunities() const {
+    return evolutionary.communities;
   }
 };
 
@@ -400,7 +450,12 @@ inline std::ostream& operator<< (std::ostream& str, const Context& context) {
       << context.coarsening
       << context.initial_partitioning
       << context.local_search
-      << "-------------------------------------------------------------------------------";
+      << "-------------------------------------------------------------------------------"
+      << std::endl;
+  if (context.partition_evolutionary) {
+    str << context.evolutionary
+        << "-------------------------------------------------------------------------------";
+  }
   return str;
 }
 
@@ -515,14 +570,13 @@ static inline void sanityCheck(Context& context) {
       // should never happen, because initial partitioning is either done via RB or directly
       break;
   }
-  if (context.partition.use_individual_part_weights &&
-      context.partition.max_part_weights[0] == std::numeric_limits<HypernodeWeight>::max()) {
+  if (context.partition.use_individual_part_weights && context.partition.max_part_weights.empty()) {
     LOG << "Individual block weights not specified. Please use --blockweights to specify the weight of each block";
     std::exit(0);
   }
 
   if (!context.partition.use_individual_part_weights &&
-      context.partition.max_part_weights[0] != std::numeric_limits<HypernodeWeight>::max()) {
+      !context.partition.max_part_weights.empty()) {
     LOG << "Individual block weights specified, but --use-individual-blockweights=false.";
     LOG << "Do you want to use the block weights you specified (Y/N)?";
     char answer = 'N';

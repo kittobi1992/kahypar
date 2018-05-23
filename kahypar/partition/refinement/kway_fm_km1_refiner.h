@@ -115,26 +115,11 @@ class KWayKMinusOneRefiner final : public IRefiner,
 
   void performMovesAndUpdateCacheImpl(const std::vector<Move>& moves,
                                       std::vector<HypernodeID>& refinement_nodes,
-                                      const UncontractionGainChanges&,
-                                      Hypergraph& hypergraph)  override final {
+                                      const UncontractionGainChanges& changes) override final {
     _unremovable_he_parts.reset();
-    Base::reset();
-    for (const HypernodeID& hn : refinement_nodes) {
-      _gain_cache.clear(hn);
-      initializeGainCacheFor(hn);
-    }
-    for (const auto& move : moves) {
-      if (!_gain_cache.entryExists(move.hn, move.to)) {
-        _gain_cache.initializeEntry(move.hn, move.to, gainInducedByHypergraph(move.hn, move.to));
-      }
-      hypergraph.changeNodePart(move.hn, move.from, move.to);
-      hypergraph.activate(move.hn);
-      hypergraph.mark(move.hn);
-      updateNeighboursGainCacheOnly(move.hn, move.from, move.to);
-    }
-    _gain_cache.resetDelta();
-    ASSERT_THAT_GAIN_CACHE_IS_VALID();
+    Base::performMovesAndUpdateCache(moves, refinement_nodes, changes);
   }
+
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
                   const std::array<HypernodeWeight, 2>&,
@@ -163,9 +148,6 @@ class KWayKMinusOneRefiner final : public IRefiner,
     double current_imbalance = best_metrics.imbalance;
     const HyperedgeWeight initial_km1 = best_metrics.km1;
     HyperedgeWeight current_km1 = best_metrics.km1;
-
-    PartitionID heaviest_part = Base::heaviestPart();
-    HypernodeWeight heaviest_part_weight = _hg.partWeight(heaviest_part);
 
     int min_cut_index = -1;
     int touched_hns_since_last_improvement = 0;
@@ -224,12 +206,7 @@ class KWayKMinusOneRefiner final : public IRefiner,
           _pq.enablePart(from_part);
         }
 
-        Base::reCalculateHeaviestPartAndItsWeight(heaviest_part, heaviest_part_weight,
-                                                  from_part, to_part);
-
-        current_imbalance = static_cast<double>(heaviest_part_weight) /
-                            ceil(static_cast<double>(_hg.totalWeight()) /
-                                 _context.partition.k) - 1.0;
+        current_imbalance = metrics::imbalance(_hg, _context);
 
         current_km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);

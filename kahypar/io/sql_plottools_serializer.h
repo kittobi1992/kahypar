@@ -19,7 +19,6 @@
  ******************************************************************************/
 
 #pragma once
-
 #include <array>
 #include <chrono>
 #include <fstream>
@@ -28,6 +27,7 @@
 #include "kahypar/definitions.h"
 #include "kahypar/git_revision.h"
 #include "kahypar/partition/context.h"
+#include "kahypar/partition/evolutionary/individual.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/partitioner.h"
 
@@ -35,21 +35,22 @@ namespace kahypar {
 namespace io {
 namespace serializer {
 static inline void serialize(const Context& context, const Hypergraph& hypergraph,
-                             const std::chrono::duration<double>& elapsed_seconds) {
+                             const std::chrono::duration<double>& elapsed_seconds,
+                             const size_t iteration = 0) {
   const auto& timings = Timer::instance().result();
   std::ostringstream oss;
   oss << "RESULT"
       << " graph=" << context.partition.graph_filename.substr(
-         context.partition.graph_filename.find_last_of('/') + 1)
+    context.partition.graph_filename.find_last_of('/') + 1)
       << " numHNs=" << hypergraph.initialNumNodes()
       << " numHEs=" << hypergraph.initialNumEdges()
       << " " << hypergraph.typeAsString();
   if (!context.partition.fixed_vertex_filename.empty()) {
     oss << " fixed_vertex_file=" << context.partition.fixed_vertex_filename.substr(
-    context.partition.fixed_vertex_filename.find_last_of('/') + 1)
+      context.partition.fixed_vertex_filename.find_last_of('/') + 1)
         << " num_fixed_vertices=" << hypergraph.numFixedVertices()
         << " fixed_vertices_imbalance=" << metrics::imbalanceFixedVertices(hypergraph,
-                                           context.partition.k);
+                                                                       context.partition.k);
   }
   oss << " mode=" << context.partition.mode
       << " objective=" << context.partition.objective
@@ -58,12 +59,24 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
       << " seed=" << context.partition.seed
       << " num_v_cycles=" << context.partition.global_search_iterations
       << " he_size_threshold=" << context.partition.hyperedge_size_threshold
-      << " total_graph_weight=" << context.partition.total_graph_weight
-      << " L_opt0=" << context.partition.perfect_balance_part_weights[0]
-      << " L_opt1=" << context.partition.perfect_balance_part_weights[1]
-      << " L_max0=" << context.partition.max_part_weights[0]
-      << " L_max1=" << context.partition.max_part_weights[1]
-      << " pre_enable_min_hash_sparsifier=" << std::boolalpha
+      << " total_graph_weight=" << hypergraph.totalWeight();
+  if (context.partition.use_individual_part_weights) {
+    for (PartitionID i = 0; i != hypergraph.k(); ++i) {
+      oss << " L_opt" << i << "=" << context.partition.perfect_balance_part_weights[i];
+    }
+  } else {
+    oss << " L_opt" << "=" << context.partition.perfect_balance_part_weights[0];
+  }
+
+  if (context.partition.use_individual_part_weights) {
+    for (PartitionID i = 0; i != hypergraph.k(); ++i) {
+      oss << " L_max" << i << "=" << context.partition.max_part_weights[i];
+    }
+  } else {
+    oss << " L_max" << "=" << context.partition.max_part_weights[0];
+  }
+
+  oss << " pre_enable_min_hash_sparsifier=" << std::boolalpha
       << context.preprocessing.enable_min_hash_sparsifier
       << " pre_min_hash_max_hyperedge_size="
       << context.preprocessing.min_hash_sparsifier.max_hyperedge_size
@@ -210,6 +223,7 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
         << " flow_use_improvement_history="
         << std::boolalpha << context.local_search.flow.use_improvement_history;
   }
+  oss << " iteration=" << iteration;
   for (PartitionID i = 0; i != hypergraph.k(); ++i) {
     oss << " partSize" << i << "=" << hypergraph.partSize(i);
   }
@@ -242,6 +256,53 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
 
   oss << " " << context.stats.serialize().str()
       << " git=" << STR(KaHyPar_BUILD_VERSION)
+      << std::endl;
+
+  std::cout << oss.str() << std::endl;
+}
+
+static inline void serializeEvolutionary(const Context& context, const Hypergraph& hg) {
+  std::ostringstream oss;
+  if (context.partition.quiet_mode) {
+    return;
+  }
+  EvoCombineStrategy combine_strat = EvoCombineStrategy::UNDEFINED;
+  EvoMutateStrategy mutate_strat = EvoMutateStrategy::UNDEFINED;
+  switch (context.evolutionary.action.decision()) {
+    case EvoDecision::combine:
+      combine_strat = context.evolutionary.combine_strategy;
+      break;
+    case EvoDecision::mutation:
+      mutate_strat = context.evolutionary.mutate_strategy;
+      break;
+    case EvoDecision::normal:
+      break;
+    default:
+      LOG << "Trying to print a nonintentional action:" << context.evolutionary.action.decision();
+  }
+
+  std::string graph_name = context.partition.graph_filename;
+  std::string truncated_graph_name = graph_name.substr(graph_name.find_last_of("/") + 1);
+  oss << "RESULT "
+      << "connectivity=" << metrics::km1(hg)
+      << " action=" << context.evolutionary.action.decision()
+      << " time-total=" << Timer::instance().evolutionaryResult().total_evolutionary
+      << " iteration=" << context.evolutionary.iteration
+      << " replace-strategy=" << context.evolutionary.replace_strategy
+      << " combine-strategy=" << combine_strat
+      << " mutate-strategy=" << mutate_strat
+      << " population-size=" << context.evolutionary.population_size
+      << " mutation-chance=" << context.evolutionary.mutation_chance
+      << " diversify-interval=" << context.evolutionary.diversify_interval
+      << " dynamic-pop-size=" << context.evolutionary.dynamic_population_size
+      << " dynamic-pop-percentile=" << context.evolutionary.dynamic_population_amount_of_time
+      << " seed=" << context.partition.seed
+      << " graph-name=" << truncated_graph_name
+      << " SOED=" << metrics::soed(hg)
+      << " cut=" << metrics::hyperedgeCut(hg)
+      << " absorption=" << metrics::absorption(hg)
+      << " imbalance=" << metrics::imbalance(hg, context)
+      << " k=" << context.partition.k
       << std::endl;
 
   std::cout << oss.str() << std::endl;

@@ -56,6 +56,7 @@ enum class CommunityPolicy : uint8_t {
 enum class HeavyNodePenaltyPolicy : uint8_t {
   no_penalty,
   multiplicative_penalty,
+  edge_frequency_penalty,
   UNDEFINED
 };
 
@@ -63,6 +64,11 @@ enum class AcceptancePolicy : uint8_t {
   best,
   best_prefer_unmatched,
   UNDEFINED
+};
+
+enum class RatingPartitionPolicy : uint8_t {
+  normal,
+  evolutionary
 };
 
 enum class FixVertexContractionAcceptancePolicy : uint8_t {
@@ -89,6 +95,7 @@ enum class RefinementAlgorithm : uint8_t {
   twoway_fm_flow,
   kway_flow,
   kway_fm_flow_km1,
+  kway_fm_flow,
   do_nothing,
   UNDEFINED
 };
@@ -129,6 +136,81 @@ enum class Objective : uint8_t {
   km1,
   UNDEFINED
 };
+enum class EvoReplaceStrategy : uint8_t {
+  worst,
+  diverse,
+  strong_diverse
+};
+
+
+enum class EvoCombineStrategy : uint8_t {
+  basic,
+  edge_frequency,
+  UNDEFINED
+};
+enum class EvoMutateStrategy : uint8_t {
+  new_initial_partitioning_vcycle,
+  vcycle,
+  UNDEFINED
+};
+
+enum class EvoDecision :uint8_t {
+  normal,
+  mutation,
+  combine
+};
+
+
+std::ostream& operator<< (std::ostream& os, const EvoReplaceStrategy& replace) {
+  switch (replace) {
+    case EvoReplaceStrategy::worst: return os << "worst";
+    case EvoReplaceStrategy::diverse: return os << "diverse";
+    case EvoReplaceStrategy::strong_diverse: return os << "strong_diverse";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(replace);
+}
+
+std::ostream& operator<< (std::ostream& os, const EvoCombineStrategy& combine) {
+  switch (combine) {
+    case EvoCombineStrategy::basic: return os << "basic";
+    case EvoCombineStrategy::edge_frequency: return os << "edge_frequency";
+    case EvoCombineStrategy::UNDEFINED: return os << "-";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(combine);
+}
+
+std::ostream& operator<< (std::ostream& os, const EvoMutateStrategy& mutation) {
+  switch (mutation) {
+    case EvoMutateStrategy::new_initial_partitioning_vcycle:
+      return os << "new_initial_partitioning_vcycle";
+    case EvoMutateStrategy::vcycle: return os << "vcycle";
+    case EvoMutateStrategy::UNDEFINED:  return os << "-";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(mutation);
+}
+
+
+std::ostream& operator<< (std::ostream& os, const EvoDecision& decision) {
+  switch (decision) {
+    case EvoDecision::normal:  return os << "normal";
+    case EvoDecision::mutation:  return os << "mutation";
+    case EvoDecision::combine:  return os << "combine";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(decision);
+}
+
+std::ostream& operator<< (std::ostream& os, const RatingPartitionPolicy& policy) {
+  switch (policy) {
+    case RatingPartitionPolicy::normal: return os << "normal";
+    case RatingPartitionPolicy::evolutionary: return os << "evolutionary";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(policy);
+}
 
 enum class FlowAlgorithm : uint8_t {
   edmond_karp,
@@ -186,8 +268,8 @@ std::ostream& operator<< (std::ostream& os, const HeavyNodePenaltyPolicy& heavy_
   switch (heavy_hn_policy) {
     case HeavyNodePenaltyPolicy::multiplicative_penalty: return os << "multiplicative";
     case HeavyNodePenaltyPolicy::no_penalty: return os << "no_penalty";
+    case HeavyNodePenaltyPolicy::edge_frequency_penalty: return os << "edge_frequency_penalty";
     case HeavyNodePenaltyPolicy::UNDEFINED: return os << "UNDEFINED";
-      // omit default case to trigger compiler warning for missing cases
   }
   return os << static_cast<uint8_t>(heavy_hn_policy);
 }
@@ -265,6 +347,7 @@ std::ostream& operator<< (std::ostream& os, const RefinementAlgorithm& algo) {
     case RefinementAlgorithm::twoway_fm_flow: return os << "twoway_fm_flow";
     case RefinementAlgorithm::kway_flow: return os << "kway_flow";
     case RefinementAlgorithm::kway_fm_flow_km1: return os << "kway_fm_flow_km1";
+    case RefinementAlgorithm::kway_fm_flow: return os << "kway_fm_flow";
     case RefinementAlgorithm::do_nothing: return os << "do_nothing";
     case RefinementAlgorithm::UNDEFINED: return os << "UNDEFINED";
       // omit default case to trigger compiler warning for missing cases
@@ -350,14 +433,55 @@ std::ostream& operator<< (std::ostream& os, const FlowExecutionMode& mode) {
   return os << static_cast<uint8_t>(mode);
 }
 
+static EvoMutateStrategy mutateStrategyFromString(const std::string& strat) {
+  if (strat == "new-initial-partitioning-vcycle") {
+    return EvoMutateStrategy::new_initial_partitioning_vcycle;
+  } else if (strat == "vcycle") {
+    return EvoMutateStrategy::vcycle;
+  }
+  LOG << "No valid mutate strategy. ";
+  exit(0);
+}
+static EvoCombineStrategy combineStrategyFromString(const std::string& strat) {
+  if (strat == "basic") {
+    return EvoCombineStrategy::basic;
+  } else if (strat == "edge-frequency") {
+    return EvoCombineStrategy::edge_frequency;
+  }
+  LOG << "No valid combine strategy. ";
+  exit(0);
+}
+static EvoReplaceStrategy replaceStrategyFromString(const std::string& strat) {
+  if (strat == "worst") {
+    return EvoReplaceStrategy::worst;
+  } else if (strat == "diverse") {
+    return EvoReplaceStrategy::diverse;
+  } else if (strat == "strong-diverse") {
+    return EvoReplaceStrategy::strong_diverse;
+  }
+  LOG << "No valid replace strategy. ";
+  exit(0);
+}
+
 static AcceptancePolicy acceptanceCriterionFromString(const std::string& crit) {
   if (crit == "best") {
     return AcceptancePolicy::best;
   } else if (crit == "best_prefer_unmatched") {
     return AcceptancePolicy::best_prefer_unmatched;
   }
-  std::cout << "No valid acceptance criterion for rating." << std::endl;
+  LOG << "No valid acceptance criterion for rating.";
   exit(0);
+}
+
+static RatingPartitionPolicy ratingPartitionPolicyFromString(const std::string& partition) {
+  if (partition == "normal") {
+    return RatingPartitionPolicy::normal;
+  } else if (partition == "evolutionary") {
+    return RatingPartitionPolicy::evolutionary;
+  }
+  LOG << "No valid partition policy for rating.";
+  exit(0);
+  return RatingPartitionPolicy::normal;
 }
 
 static FixVertexContractionAcceptancePolicy fixedVertexAcceptanceCriterionFromString(const std::string& crit) {
@@ -368,7 +492,7 @@ static FixVertexContractionAcceptancePolicy fixedVertexAcceptanceCriterionFromSt
   } else if (crit == "equivalent_vertices") {
     return FixVertexContractionAcceptancePolicy::equivalent_vertices;
   }
-  std::cout << "No valid fixed vertex acceptance criterion for rating." << std::endl;
+  LOG << "No valid fixed vertex acceptance criterion for rating.";
   exit(0);
 }
 
@@ -377,8 +501,11 @@ static HeavyNodePenaltyPolicy heavyNodePenaltyFromString(const std::string& pena
     return HeavyNodePenaltyPolicy::multiplicative_penalty;
   } else if (penalty == "no_penalty") {
     return HeavyNodePenaltyPolicy::no_penalty;
+  } else if (penalty == "edge_frequency_penalty") {
+    return HeavyNodePenaltyPolicy::edge_frequency_penalty;
+    // omit default case to trigger compiler warning for missing cases
   }
-  std::cout << "No valid edge penalty policy for rating." << std::endl;
+  LOG << "No valid edge penalty policy for rating.";
   exit(0);
   return HeavyNodePenaltyPolicy::multiplicative_penalty;
 }
@@ -389,7 +516,7 @@ static RatingFunction ratingFunctionFromString(const std::string& function) {
   } else if (function == "edge_frequency") {
     return RatingFunction::edge_frequency;
   }
-  std::cout << "No valid rating function for rating." << std::endl;
+  LOG << "No valid rating function for rating.";
   exit(0);
   return RatingFunction::heavy_edge;
 }
@@ -400,7 +527,7 @@ static RefinementStoppingRule stoppingRuleFromString(const std::string& rule) {
   } else if (rule == "adaptive_opt") {
     return RefinementStoppingRule::adaptive_opt;
   }
-  std::cout << "No valid stopping rule for FM." << std::endl;
+  LOG << "No valid stopping rule for FM.";
   exit(0);
   return RefinementStoppingRule::simple;
 }
@@ -413,7 +540,7 @@ static CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type
   } else if (type == "ml_style") {
     return CoarseningAlgorithm::ml_style;
   }
-  std::cout << "Illegal option:" << type << std::endl;
+  LOG << "Illegal option:" << type;
   exit(0);
   return CoarseningAlgorithm::heavy_lazy;
 }
@@ -435,10 +562,12 @@ static RefinementAlgorithm refinementAlgorithmFromString(const std::string& type
     return RefinementAlgorithm::kway_flow;
   } else if (type == "kway_fm_flow_km1") {
     return RefinementAlgorithm::kway_fm_flow_km1;
+  } else if (type == "kway_fm_flow") {
+    return RefinementAlgorithm::kway_fm_flow;
   } else if (type == "do_nothing") {
     return RefinementAlgorithm::do_nothing;
   }
-  std::cout << "Illegal option:" << type << std::endl;
+  LOG << "Illegal option:" << type;
   exit(0);
   return RefinementAlgorithm::kway_fm;
 }
@@ -471,7 +600,7 @@ static InitialPartitionerAlgorithm initialPartitioningAlgorithmFromString(const 
   } else if (mode == "pool") {
     return InitialPartitionerAlgorithm::pool;
   }
-  std::cout << "Illegal option:" << mode << std::endl;
+  LOG << "Illegal option:" << mode;
   exit(0);
   return InitialPartitionerAlgorithm::greedy_global;
 }
@@ -482,7 +611,7 @@ static InitialPartitioningTechnique inititalPartitioningTechniqueFromString(cons
   } else if (technique == "multi") {
     return InitialPartitioningTechnique::multilevel;
   }
-  std::cout << "Illegal option:" << technique << std::endl;
+  LOG << "Illegal option:" << technique;
   exit(0);
   return InitialPartitioningTechnique::multilevel;
 }
@@ -497,7 +626,7 @@ static LouvainEdgeWeight edgeWeightFromString(const std::string& type) {
   } else if (type == "degree") {
     return LouvainEdgeWeight::degree;
   }
-  std::cout << "Illegal option:" << type << std::endl;
+  LOG << "Illegal option:" << type;
   exit(0);
   return LouvainEdgeWeight::uniform;
 }
@@ -508,7 +637,7 @@ static Mode modeFromString(const std::string& mode) {
   } else if (mode == "direct") {
     return Mode::direct_kway;
   }
-  std::cout << "Illegal option:" << mode << std::endl;
+  LOG << "Illegal option:" << mode;
   exit(0);
   return Mode::direct_kway;
 }
@@ -523,7 +652,7 @@ static FlowAlgorithm flowAlgorithmFromString(const std::string& type) {
   } else if (type == "ibfs") {
     return FlowAlgorithm::ibfs;
   }
-  std::cout << "Illegal option:" << type << std::endl;
+  LOG << "Illegal option:" << type;
   exit(0);
   return FlowAlgorithm::ibfs;
 }
@@ -538,7 +667,7 @@ static FlowNetworkType flowNetworkFromString(const std::string& type) {
   } else if (type == "hybrid") {
     return FlowNetworkType::hybrid;
   }
-  std::cout << "No valid flow network type." << std::endl;
+  LOG << "No valid flow network type.";
   exit(0);
   return FlowNetworkType::hybrid;
 }
@@ -551,7 +680,7 @@ static FlowExecutionMode flowExecutionPolicyFromString(const std::string& mode) 
   } else if (mode == "exponential") {
     return FlowExecutionMode::exponential;
   }
-  std::cout << "No valid flow execution mode." << std::endl;
+  LOG << "No valid flow execution mode.";
   exit(0);
   return FlowExecutionMode::exponential;
 }

@@ -58,12 +58,8 @@ Its algorithms and detailed experimental results are presented in several [resea
  - Hypergraph Partitioning with Variable Block Weights:
  
  	KaHyPar has support for variable block weights. If command line option `--use-individual-part-weights=true` is used, the partitioner tries to partition the hypergraph such that each block Vx has a weight of at most Bx, where Bx can be specified for each block individually using the command line parameter `--part-weights= B1 B2 B3 ... Bk-1`. Since the framework does not yet support perfectly balanced partitioning, upper bounds need to be slightly larger than the total weight of all vertices of the hypergraph. Note that this feature is still experimental.
-
- - Evolutionary Framework (KaHyPar-E) (soon available, see pull request [#23](https://github.com/SebastianSchlag/kahypar/pull/23)):
-   
-   KaHyPar-E enhances KaHyPar with an evolutionary framework as described in our [GECCO'18 publication][GECCO'18]. Given a fairly large amount of running time, this memetic multilevel algorithm performs better than repeated executions of KaHyPar-MF/-CA, hMetis, and PaToH. The configuration [/config/km1_direct_kway_sea18.ini](/config/km1_direct_kway_sea18.ini) uses KaHyPar-CA to exploit the local solution space and was used in the [GECCO'18 experiments][GECCO'18bench]. The command line parameter `--time-limit=xxx` can be used to set the maximum running time (in seconds).
  
- - Hypergraph Partitioning with Fixed Vertices
+ - Hypergraph Partitioning with Fixed Vertices:
  
     Hypergraph partitioning with fixed vertices is a variation of standard hypergraph partitioning. In this problem, there is an additional constraint on the block assignment of some vertices, i.e., some vertices are preassigned to specific blocks prior to partitioning with the condition that, after partitioning the remaining “free” vertices, the fixed vertices are still in the block that they were assigned to. The command line parameter `--fixed / -f` can be used to specify a fix file in [hMetis fix file format](http://glaros.dtc.umn.edu/gkhome/fetch/sw/hmetis/manual.pdf). For a hypergraph with V vertices, the fix file consists of |V| lines - one for each vertex. The *i*th line either contains `-1` to indicate that the vertex is free to move or `<part id>` to indicate that this vertex should be preassigned to block `<part id>`. Note that part ids start from 0. 
     
@@ -71,6 +67,10 @@ Its algorithms and detailed experimental results are presented in several [resea
     1. `free_vertex_only` allows all contractions in which the contraction partner is a *free* vertex, i.e., it allows contractions of vertex pairs where either both vertices are free, or one vertex is fixed and the other vertex is free.
     2. `fixed_vertex_allowed` additionaly allows contractions of two fixed vertices provided that both are preassigned to the *same* block. Based on preliminary experiments, this is currently the default policy.
     3. `equivalent_vertices` only allows contractions of vertex pairs that consist of either two free vertices or two fixed vertices preassigned to the same block.
+    
+- Evolutionary Framework (KaHyPar-E):
+   
+   KaHyPar-E enhances KaHyPar with an evolutionary framework as described in our [GECCO'18 publication][GECCO'18]. Given a fairly large amount of running time, this memetic multilevel algorithm performs better than repeated executions of KaHyPar-MF/-CA, hMetis, and PaToH. The configuration [/config/km1_direct_kway_gecco18.ini](/config/km1_direct_kway_gecco18.ini) uses KaHyPar-CA to exploit the local solution space and was used in the [GECCO'18 experiments][GECCO'18bench]. The command line parameter `--time-limit=xxx` can be used to set the maximum running time (in seconds). Parameter `--partition-evolutionary=true` enables evolutionary partitioning.
    
 #### Experimental Results
  We use the performance plots introduced in [ALENEX'16][ALENEX'16] to compare KaHyPar to other partitioning algorithms in terms of solution quality:
@@ -135,9 +135,11 @@ We use the [hMetis format](http://glaros.dtc.umn.edu/gkhome/fetch/sw/hmetis/manu
 Currently we provide four different presets that correspond to the configurations used in the publications at
 [ALENEX'16][ALENEX'16], [ALENEX'17][ALENEX'17], [SEA'17][SEA'17], [SEA'18](https://arxiv.org/abs/1802.03587), and [GECCO'18][GECCO'18].
 
-To start EvoHGP/KaHyPar-E (see pull request [#23](https://github.com/SebastianSchlag/kahypar/pull/23)) optimizing the (connectivity - 1) objective using direct k-way mode run
+To start EvoHGP/KaHyPar-E optimizing the (connectivity - 1) objective using direct k-way mode run
    
      ./KaHyPar -h <path-to-hgr> -k <# blocks> -e <imbalance (e.g. 0.03)> -o km1 -m direct -p ../../../config/km1_direct_kway_gecco18.ini
+     
+Note that the configuration `km1_direct_kway_gecco18.ini` is based on KaHyPar-CA. However, KaHyPar-E also works with flow-based local improvements if the configration is adjusted according to the refinement parameters used in `km1_direct_kway_sea18.ini`.
 
 To start KaHyPar-MF (using *flow-based refinement*) optimizing the (connectivity - 1) objective using direct k-way mode run:
 
@@ -180,7 +182,7 @@ If you use KaHyPar in an academic setting please cite the appropriate paper. If 
                   Henning Meyerhenke and
                   Peter Sanders and
                   Christian Schulz},
-     title     = {\emph{k}-way Hypergraph Partitioning via \emph{n}-Level Recursive
+     title     = {k-way Hypergraph Partitioning via \emph{n}-Level Recursive
                   Bisection},
      booktitle = {18th Workshop on Algorithm Engineering and Experiments, (ALENEX 2016)},
      pages     = {53--67},
@@ -259,7 +261,7 @@ feel free to contact me or create an issue on the
 [ALENEX'16]: http://epubs.siam.org/doi/abs/10.1137/1.9781611974317.5
 [ALENEX'17]: http://epubs.siam.org/doi/abs/10.1137/1.9781611974768.3
 [SEA'17]: https://nms.kcl.ac.uk/informatics/events/SEA2017/accepted.html
-[ALENEX'16bench]: http://dx.doi.org/10.5281/zenodo.30176
+[ALENEX'16bench]: https://doi.org/10.5281/zenodo.30176
 [ALENEX'17bench]: https://algo2.iti.kit.edu/schlag/alenex2017/
 [SEA'17bench]: https://algo2.iti.kit.edu/schlag/sea2017/
 [SEA'18bench]: https://algo2.iti.kit.edu/schlag/sea2018/
