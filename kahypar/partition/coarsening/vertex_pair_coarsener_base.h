@@ -149,7 +149,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       }
 
       if (!moves.empty()) {
-        refiner.performMovesAndUpdateCache(moves, refinement_nodes, changes, _hg);
+        refiner.performMovesAndUpdateCache(moves, refinement_nodes, changes);
         changes.representative[0] = 0;
         changes.contraction_partner[0] = 0;
         current_metrics.km1 =  metrics::km1(_hg);
