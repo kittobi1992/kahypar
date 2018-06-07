@@ -211,6 +211,19 @@ static inline void partition(Hypergraph& hg, const Context& context) {
       best_imbalance = imbalance;
     }
     init_alpha -= 0.1;
+    LOG << V(metrics::imbalance(*extracted_init_hypergraph.first, context));
+    for (int i = 0; i != context.partition.k; ++i) {
+      LOG << V(extracted_init_hypergraph.first->partWeight(i)) << V(context.partition.max_part_weights[i]);
+    }
+    HyperedgeWeight cut_weight = 0;
+    for (const auto he : extracted_init_hypergraph.first->edges()){
+      if (extracted_init_hypergraph.first->connectivity(he) > 1){
+        cut_weight += extracted_init_hypergraph.first->edgeWeight(he);
+      }
+    }
+    LOG << "===========================>" << V(cut_weight);
+
+
   } while (metrics::imbalance(*extracted_init_hypergraph.first, context)
            > context.partition.epsilon && init_alpha > 0.0);
 

@@ -415,6 +415,8 @@ class KWayKMinusOneRefiner final : public IRefiner,
   void fullUpdate(const HypernodeID moved_hn, const PartitionID from_part,
                   const PartitionID to_part, const HyperedgeID he) {
     ONLYDEBUG(moved_hn);
+    if (_hg.edgeSize(he) == 1) { return;}
+
     const HypernodeID pin_count_from_part_before_move = _hg.pinCountInPart(he, from_part) + 1;
     const HypernodeID pin_count_to_part_after_move = _hg.pinCountInPart(he, to_part);
     const bool move_decreased_connectivity = pin_count_from_part_before_move - 1 == 0;
@@ -601,6 +603,7 @@ class KWayKMinusOneRefiner final : public IRefiner,
 
     bool moved_hn_remains_conntected_to_from_part = false;
     for (const HyperedgeID& he : _hg.incidentEdges(moved_hn)) {
+      if (_hg.edgeSize(he) == 1) { continue;}
       const HypernodeID pins_in_source_part_after = _hg.pinCountInPart(he, from_part);
 
       ASSERT(!_gain_cache.entryExists(moved_hn, from_part), V(moved_hn) << V(from_part));
@@ -663,6 +666,7 @@ class KWayKMinusOneRefiner final : public IRefiner,
         // This lambda checks verifies the internal state of KFM for all pins that could
         // have been touched during updateNeighbours.
         for (const HyperedgeID& he : _hg.incidentEdges(moved_hn)) {
+          if (_hg.edgeSize(he) == 1) { continue;}
           bool valid = true;
           for (const HypernodeID& pin : _hg.pins(he)) {
             ASSERT_THAT_CACHE_IS_VALID_FOR_HN(pin);
@@ -853,6 +857,7 @@ class KWayKMinusOneRefiner final : public IRefiner,
     ASSERT(target_part != _hg.partID(hn), V(hn) << V(target_part));
     Gain gain = 0;
     for (const HyperedgeID& he : _hg.incidentEdges(hn)) {
+      if (_hg.edgeSize(he) == 1) { continue;}
       ASSERT(_hg.edgeSize(he) > 1, V(he));
       gain += gainInducedByHyperedge(hn, he, target_part);
     }

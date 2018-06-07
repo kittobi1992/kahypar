@@ -947,6 +947,7 @@ class GenericHypergraph {
           changes_v -= pinCountInPart(he, partID(memento.u)) == 1 ? edgeWeight(he) : 0;
         } else {
           // because after uncontraction v is not connected to that HE anymore
+          if (edgeSize(he) == 1) { continue;}
           ASSERT(pinCountInPart(he, partID(memento.u)) > 1, "Found Single-Node HE!");
           changes_v += edgeWeight(he);
         }
@@ -972,6 +973,7 @@ class GenericHypergraph {
             changes_u -= pinCountInPart(he, partID(memento.u)) == 1 ? edgeWeight(he) : 0;
           } else {
             // because after uncontraction, u is not connected to that HE anymore
+            if (edgeSize(he) == 1) { continue;}
             ASSERT(pinCountInPart(he, partID(memento.u)) > 1, "Found Single-Node HE!");
             changes_u += edgeWeight(he);
           }
@@ -1932,6 +1934,10 @@ class GenericHypergraph {
     if (connectivity_decreased) {
       _connectivity_sets[he].remove(id);
       hyperedge(he).connectivity -= 1;
+      if (edgeSize(he) == 1) {
+        _part_info[id].weight -= edgeWeight(he);
+        ASSERT(hyperedge(he).connectivity == 0,V(he));
+      }
       if (hyperedge(he).connectivity == 1) {
         _part_info[*connectivitySet(he).begin()].weight += edgeWeight(he);
       }
@@ -1953,10 +1959,10 @@ class GenericHypergraph {
       hyperedge(he).connectivity += 1;
       if (x) {
         if (hyperedge(he).connectivity == 2) {
-        _part_info[*connectivitySet(he).begin()].weight -= edgeWeight(he);
-      } else if (hyperedge(he).connectivity == 1) {
-        _part_info[id].weight += edgeWeight(he);
-      }
+          _part_info[*connectivitySet(he).begin()].weight -= edgeWeight(he);
+        } else if (hyperedge(he).connectivity == 1) {
+          _part_info[id].weight += edgeWeight(he);
+        }
       }
       _connectivity_sets[he].add(id);
     }
@@ -2445,15 +2451,12 @@ extractPartAsUnpartitionedHypergraphForBisection(const Hypergraph& hypergraph,
     if (objective == Objective::km1) {
       // Cut-Net Splitting is used to optimize connectivity-1 metric.
       for (const HyperedgeID& he : hypergraph.edges()) {
-        ASSERT(hypergraph.edgeSize(he) > 1, V(he));
+        // ASSERT(hypergraph.edgeSize(he) > 1, V(he));
         if (hypergraph.connectivity(he) == 1 && *hypergraph.connectivitySet(he).begin() != part) {
           // HE is completely contained in one of the other parts
           continue;
         }
-        if (hypergraph.pinCountInPart(he, part) <= 1) {
-          // Single-node HEs have to be removed
-          // Furthermore the hyperedge might span other parts
-          // (not including the part to be extracted)
+        if (hypergraph.pinCountInPart(he, part) == 0) {
           continue;
         }
         subhypergraph->_hyperedges.emplace_back(0, 0, hypergraph.edgeWeight(he));
@@ -2468,32 +2471,34 @@ extractPartAsUnpartitionedHypergraphForBisection(const Hypergraph& hypergraph,
             ++pin_index;
           }
         }
-        ASSERT(subhypergraph->hyperedge(num_hyperedges).size() > 1, V(he));
+        // ASSERT(subhypergraph->hyperedge(num_hyperedges).size() > 1, V(he));
         ++num_hyperedges;
       }
     } else {
-      for (const HyperedgeID& he : hypergraph.edges()) {
-        if (hypergraph.connectivity(he) > 1) {
-          continue;
-        }
-        if (*hypergraph.connectivitySet(he).begin() == part) {
-          ASSERT(hypergraph.hyperedge(he).connectivity == 1,
-                 V(he) << V(hypergraph.hyperedge(he).connectivity));
-          ASSERT(hypergraph.edgeSize(he) > 1, V(he));
-          subhypergraph->_hyperedges.emplace_back(0, 0, hypergraph.edgeWeight(he));
-          ++subhypergraph->_num_hyperedges;
-          subhypergraph->_hyperedges[num_hyperedges].setFirstEntry(pin_index);
-          for (const HypernodeID& pin : hypergraph.pins(he)) {
-            ASSERT(hypergraph.partID(pin) == part, V(pin));
-            subhypergraph->hyperedge(num_hyperedges).incrementSize();
-            subhypergraph->hyperedge(num_hyperedges).hash += math::hash(hypergraph_to_subhypergraph[pin]);
-            subhypergraph->_incidence_array.push_back(hypergraph_to_subhypergraph[pin]);
-            subhypergraph->hypernode(hypergraph_to_subhypergraph[pin]).incrementSize();
-            ++pin_index;
-          }
-          ++num_hyperedges;
-        }
-      }
+      LOG << "Cut metric currently not supported";
+      std::exit(0);
+      // for (const HyperedgeID& he : hypergraph.edges()) {
+      //   if (hypergraph.connectivity(he) > 1) {
+      //     continue;
+      //   }
+      //   if (*hypergraph.connectivitySet(he).begin() == part) {
+      //     ASSERT(hypergraph.hyperedge(he).connectivity == 1,
+      //            V(he) << V(hypergraph.hyperedge(he).connectivity));
+      //     ASSERT(hypergraph.edgeSize(he) > 1, V(he));
+      //     subhypergraph->_hyperedges.emplace_back(0, 0, hypergraph.edgeWeight(he));
+      //     ++subhypergraph->_num_hyperedges;
+      //     subhypergraph->_hyperedges[num_hyperedges].setFirstEntry(pin_index);
+      //     for (const HypernodeID& pin : hypergraph.pins(he)) {
+      //       ASSERT(hypergraph.partID(pin) == part, V(pin));
+      //       subhypergraph->hyperedge(num_hyperedges).incrementSize();
+      //       subhypergraph->hyperedge(num_hyperedges).hash += math::hash(hypergraph_to_subhypergraph[pin]);
+      //       subhypergraph->_incidence_array.push_back(hypergraph_to_subhypergraph[pin]);
+      //       subhypergraph->hypernode(hypergraph_to_subhypergraph[pin]).incrementSize();
+      //       ++pin_index;
+      //     }
+      //     ++num_hyperedges;
+      //   }
+      // }
     }
 
     setupInternalStructure(hypergraph, subhypergraph_to_hypergraph, *subhypergraph,

@@ -95,6 +95,9 @@ class VertexPairRater {
     DBG << "Calculating rating for HN" << u;
     const HypernodeWeight weight_u = _hg.nodeWeight(u);
     for (const HyperedgeID& he : _hg.incidentEdges(u)) {
+      if (_hg.edgeSize(he) == 1) {
+        continue;
+      }
       ASSERT(_hg.edgeSize(he) > 1, V(he));
       if (_hg.edgeSize(he) <= _context.partition.hyperedge_size_threshold) {
         const RatingType score = ScorePolicy::score(_hg, he, _context);

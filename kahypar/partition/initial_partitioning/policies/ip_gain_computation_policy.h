@@ -50,6 +50,7 @@ class FMGainComputationPolicy {
 
     Gain gain = 0;
     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (hg.edgeSize(he) == 1) { continue;}
       ASSERT(hg.edgeSize(he) > 1, "Computing gain for Single-Node HE");
       if (hg.connectivity(he) == 1 && hg.pinCountInPart(he, target_part) == 0) {
         gain -= hg.edgeWeight(he);
@@ -71,6 +72,7 @@ class FMGainComputationPolicy {
 
     Gain gain = 0;
     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (hg.edgeSize(he) == 1) { continue;}
       ASSERT(hg.edgeSize(he) > 1, "Computing gain for Single-Node HE");
       switch (hg.connectivity(he)) {
         case 1:
@@ -110,6 +112,7 @@ class FMGainComputationPolicy {
                                                           const HypernodeID hn,
                                                           const PartitionID to) {
     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (hg.edgeSize(he) == 1) { continue;}
       const HypernodeID pin_count_in_target_part_after = hg.pinCountInPart(he, to);
       const PartitionID connectivity = hg.connectivity(he);
       const HypernodeID he_size = hg.edgeSize(he);
@@ -172,6 +175,7 @@ class FMGainComputationPolicy {
                                                     const PartitionID from,
                                                     const PartitionID to) {
     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (hg.edgeSize(he) == 1) { continue;}
       const HypernodeID pin_count_in_source_part_before = hg.pinCountInPart(he, from) + 1;
       const HypernodeID pin_count_in_target_part_after = hg.pinCountInPart(he, to);
       const HypernodeID he_size = hg.edgeSize(he);
@@ -297,6 +301,7 @@ class MaxPinGainComputationPolicy {
                                    ds::FastResetFlagArray<>& visit) {
     Gain gain = 0;
     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (hg.edgeSize(he) == 1) {continue;}
       if (hg.pinCountInPart(he, target_part) > 0) {
         for (const HypernodeID& pin : hg.pins(he)) {
           if (!visit[pin] && hg.partID(pin) == target_part) {
@@ -318,6 +323,7 @@ class MaxPinGainComputationPolicy {
                                      const PartitionID to, ds::FastResetFlagArray<>& visit) {
     if (from == -1) {
       for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+        if (hg.edgeSize(he) == 1) { continue;}
         for (const HypernodeID& pin : hg.pins(he)) {
           if (!visit[pin]) {
             if (pq.contains(pin, to) && !hg.isFixedVertex(pin)) {
@@ -329,6 +335,7 @@ class MaxPinGainComputationPolicy {
       }
     } else {
       for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+        if (hg.edgeSize(he) == 1) { continue;}
         for (const HypernodeID& pin : hg.pins(he)) {
           if (!visit[pin] && !hg.isFixedVertex(pin)) {
             if (pq.contains(pin, to)) {
@@ -357,6 +364,7 @@ class MaxNetGainComputationPolicy {
                                    const ds::FastResetFlagArray<>&) {
     Gain gain = 0;
     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (hg.edgeSize(he) == 1) { continue;}
       if (hg.pinCountInPart(he, target_part) > 0) {
         gain += hg.edgeWeight(he);
       }
@@ -371,6 +379,7 @@ class MaxNetGainComputationPolicy {
                                      const PartitionID to,
                                      const ds::FastResetFlagArray<>&) {
     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (hg.edgeSize(he) == 1) { continue;}
       Gain pins_in_source_part = -1;
       if (from != -1) {
         pins_in_source_part = hg.pinCountInPart(he, from);

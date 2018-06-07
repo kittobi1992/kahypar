@@ -370,6 +370,7 @@ class TwoWayFMRefiner final : public IRefiner,
     const Gain rb_delta = _gain_cache.delta(moved_hn);
     _gain_cache.setNotCached(moved_hn);
     for (const HyperedgeID& he : _hg.incidentEdges(moved_hn)) {
+      if (_hg.edgeSize(he) == 1) { continue;}
       if (_locked_hes.get(he) != HEState::locked) {
         if (_locked_hes.get(he) == to_part) {
           // he is loose
@@ -415,6 +416,7 @@ class TwoWayFMRefiner final : public IRefiner,
 
     ASSERT([&]() {
         for (const HyperedgeID& he : _hg.incidentEdges(moved_hn)) {
+          if (_hg.edgeSize(he) == 1) { continue;}
           for (const HypernodeID& pin : _hg.pins(he)) {
             const PartitionID other_part = 1 - _hg.partID(pin);
             if (!_hg.isBorderNode(pin)) {
@@ -566,6 +568,8 @@ class TwoWayFMRefiner final : public IRefiner,
   template <bool update_local_search_pq = true>
   void deltaUpdate(const PartitionID from_part,
                    const PartitionID to_part, const HyperedgeID he) {
+    if (_hg.edgeSize(he) == 1) { return;}
+
     const HypernodeID pin_count_from_part_after_move = _hg.pinCountInPart(he, from_part);
     const HypernodeID pin_count_to_part_after_move = _hg.pinCountInPart(he, to_part);
 
@@ -573,6 +577,8 @@ class TwoWayFMRefiner final : public IRefiner,
     const bool he_became_internal_he = pin_count_from_part_after_move == 0;
     const bool increase_necessary = pin_count_from_part_after_move == 1;
     const bool decrease_necessary = pin_count_to_part_after_move == 2;
+
+
 
     if (he_became_cut_he || he_became_internal_he || increase_necessary ||
         decrease_necessary) {
@@ -661,6 +667,7 @@ class TwoWayFMRefiner final : public IRefiner,
     Gain gain = 0;
     ASSERT(_hg.partID(hn) < 2);
     for (const HyperedgeID& he : _hg.incidentEdges(hn)) {
+      if (_hg.edgeSize(he) == 1) { continue;}
       ASSERT(_hg.edgeSize(he) > 1, V(he));
       if (_hg.pinCountInPart(he, _hg.partID(hn) ^ 1) == 0) {
         gain -= _hg.edgeWeight(he);

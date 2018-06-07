@@ -80,10 +80,10 @@ int main(int argc, char* argv[]) {
     for (const HypernodeWeight& part_weight : context.partition.max_part_weights) {
       sum_part_weights += part_weight;
     }
-    if (sum_part_weights < hypergraph.totalWeight()) {
-      LOG << "Sum of individual part weights is less than sum of vertex weights";
-      std::exit(-1);
-    }
+    // if (sum_part_weights < hypergraph.totalWeight()) {
+    //   LOG << "Sum of individual part weights is less than sum of vertex weights";
+    //   std::exit(-1);
+    // }
   }
 
   size_t iteration = 0;

@@ -80,9 +80,9 @@ class CoarsenerBase {
   }
 
   void removeSingleNodeHyperedges() {
-    const HyperedgeWeight removed_he_weight =
-      _hypergraph_pruner.removeSingleNodeHyperedges(_hg, _history.back());
-    _context.stats.add(StatTag::Coarsening, "removedSingleNodeHEWeight", removed_he_weight);
+    // const HyperedgeWeight removed_he_weight =
+    //   _hypergraph_pruner.removeSingleNodeHyperedges(_hg, _history.back());
+    // _context.stats.add(StatTag::Coarsening, "removedSingleNodeHEWeight", removed_he_weight);
   }
 
   void removeParallelHyperedges() {
@@ -96,7 +96,7 @@ class CoarsenerBase {
   }
 
   void restoreSingleNodeHyperedges() {
-    _hypergraph_pruner.restoreSingleNodeHyperedges(_hg, _history.back());
+    // _hypergraph_pruner.restoreSingleNodeHyperedges(_hg, _history.back());
   }
 
   void initializeRefiner(IRefiner& refiner) {

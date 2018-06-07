@@ -96,40 +96,8 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       restoreParallelHyperedges();
 
       restoreSingleNodeHyperedges();
-      DBG << "before" <<  V(metrics::imbalance(_hg, _context));
 
-      HypernodeID he = 0;
-      std::vector<Move> moves;
-      HyperedgeWeight overloaded_block_weight = _hg.partWeight(_hg.partID(_history.back().contraction_memento.u));
-      PartitionID block = _hg.partID(_history.back().contraction_memento.u);
-      while(overloaded_block_weight > _context.partition.max_part_weights[0]) {
-        LOG << V(block) << V(overloaded_block_weight);
-        PartitionID min_part = 0;
-        HyperedgeWeight min_part_weight = _hg.partWeight(0);
-        for (int i = 1; i < _context.partition.k; ++ i){
-          if (_hg.partWeight(i) < min_part_weight) {
-            min_part_weight = _hg.partWeight(i);
-            min_part = i;
-          }
-        }
-        for (; he != _hg.initialNumEdges(); ++he){
-          if (_hg.edgeIsEnabled(he) && _hg.connectivity(he) == 1 && *_hg.connectivitySet(he).begin() == block) {
-            for (const auto pin : _hg.pins(he)) {
-              moves.emplace_back(pin, _hg.partID(pin), min_part);
-            }
-            overloaded_block_weight -= _hg.edgeWeight(he);
-            if (overloaded_block_weight <= _context.partition.max_part_weights[0]) {
-              break;
-            }
-          }
-        }
-        if (he == _hg.initialNumEdges()) {
-          break;
-        }
-      }
-      DBG << "after" <<  V(metrics::imbalance(_hg, _context));
-
-      DBG << "Uncontracting: (" << _history.back().contraction_memento.u << ","
+      DBG0 << "Uncontracting: (" << _history.back().contraction_memento.u << ","
           << _history.back().contraction_memento.v << ")";
 
       refinement_nodes.clear();
@@ -146,14 +114,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
                        meta::Int2Type<static_cast<int>(RefinementAlgorithm::twoway_fm)>());
       } else {
         _hg.uncontract(_history.back().contraction_memento);
-      }
-
-      if (!moves.empty()) {
-        refiner.performMovesAndUpdateCache(moves, refinement_nodes, changes);
-        changes.representative[0] = 0;
-        changes.contraction_partner[0] = 0;
-        current_metrics.km1 =  metrics::km1(_hg);
-        current_metrics.cut =  metrics::hyperedgeCut(_hg);
       }
       current_metrics.imbalance = metrics::imbalance(_hg, _context);
 
