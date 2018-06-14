@@ -187,10 +187,6 @@ struct LocalSearchParameters {
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
   };
 
-  struct Sclap {
-    int max_number_iterations = std::numeric_limits<int>::max();
-  };
-
   struct Flow {
     FlowAlgorithm algorithm = FlowAlgorithm::UNDEFINED;
     FlowNetworkType network = FlowNetworkType::UNDEFINED;
@@ -204,7 +200,6 @@ struct LocalSearchParameters {
   };
 
   FM fm { };
-  Sclap sclap { };
   Flow flow { };
   RefinementAlgorithm algorithm = RefinementAlgorithm::UNDEFINED;
   int iterations_per_level = std::numeric_limits<int>::max();
@@ -226,8 +221,6 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     } else {
       str << "  adaptive stopping alpha:            " << params.fm.adaptive_stopping_alpha << std::endl;
     }
-  } else if (params.algorithm == RefinementAlgorithm::label_propagation) {
-    str << "  max. # iterations:                  " << params.sclap.max_number_iterations << std::endl;
   }
   if (params.algorithm == RefinementAlgorithm::twoway_flow ||
       params.algorithm == RefinementAlgorithm::kway_flow ||
@@ -320,10 +313,12 @@ struct PartitioningParameters {
   bool quiet_mode = false;
   bool sp_process_output = false;
   bool use_individual_part_weights = false;
+  bool vcycle_refinement_for_input_partition = false;
 
   std::string graph_filename { };
   std::string graph_partition_filename { };
   std::string fixed_vertex_filename { };
+  std::string input_partition_filename { };
 };
 
 inline std::ostream& operator<< (std::ostream& str, const PartitioningParameters& params) {
@@ -332,6 +327,9 @@ inline std::ostream& operator<< (std::ostream& str, const PartitioningParameters
   str << "  Partition File:                     " << params.graph_partition_filename << std::endl;
   if (!params.fixed_vertex_filename.empty()) {
     str << "  Fixed Vertex File:                  " << params.fixed_vertex_filename << std::endl;
+  }
+  if (!params.input_partition_filename.empty()) {
+    str << "  Input Partition File:                  " << params.input_partition_filename << std::endl;
   }
   str << "  Mode:                               " << params.mode << std::endl;
   str << "  Objective:                          " << params.objective << std::endl;
@@ -434,6 +432,27 @@ class Context {
 
   std::vector<ClusterID> getCommunities() const {
     return evolutionary.communities;
+  }
+
+  void setupPartWeights(const HypernodeWeight total_hypergraph_weight) {
+    if (partition.use_individual_part_weights) {
+      partition.perfect_balance_part_weights = partition.max_part_weights;
+    } else {
+      partition.perfect_balance_part_weights.clear();
+      partition.perfect_balance_part_weights.push_back(ceil(
+                                                         total_hypergraph_weight
+                                                         / static_cast<double>(partition.k)));
+      for (PartitionID part = 1; part != partition.k; ++part) {
+        partition.perfect_balance_part_weights.push_back(
+          partition.perfect_balance_part_weights[0]);
+      }
+      partition.max_part_weights.clear();
+      partition.max_part_weights.push_back((1 + partition.epsilon)
+                                           * partition.perfect_balance_part_weights[0]);
+      for (PartitionID part = 1; part != partition.k; ++part) {
+        partition.max_part_weights.push_back(partition.max_part_weights[0]);
+      }
+    }
   }
 };
 
