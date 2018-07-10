@@ -62,9 +62,31 @@ int main(int argc, char* argv[]) {
 
   kahypar::Randomize::instance().setSeed(context.partition.seed);
 
-  kahypar::Hypergraph hypergraph(
+  kahypar::Hypergraph original_hypergraph(
     kahypar::io::createHypergraphFromFile(context.partition.graph_filename,
                                           context.partition.k));
+
+  kahypar::io::printHypergraphInfo(original_hypergraph, "Original Hypergraph");
+
+  kahypar::Hypergraph dual_hypergraph = kahypar::ds::constructDualHypergraph(original_hypergraph);
+
+  LOG << "=====> Writing dual hypergraph file: " << context.partition.graph_filename + ".dual.hgr";
+  kahypar::io::writeHypergraphFile(dual_hypergraph, context.partition.graph_filename + ".dual_with_parallel_hes.hgr");
+
+  kahypar::io::printHypergraphInfo(dual_hypergraph, "DUAL Hypergraph");
+
+  auto removed_parallel_hes = kahypar::ds::removeParallelHyperedges(dual_hypergraph);
+
+  kahypar::Hypergraph& hypergraph = dual_hypergraph;
+
+  // In our application, we do not want to consider parallel nets at all.
+  for (const auto he: hypergraph.edges()) {
+    if (hypergraph.edgeWeight(he) != 1) {
+      hypergraph.setEdgeWeight(he, 1);
+    }
+  }
+
+  kahypar::io::printHypergraphInfo(hypergraph, "DUAL Hypergraph without parallel HEs");
 
   if (!context.partition.fixed_vertex_filename.empty()) {
     kahypar::io::readFixedVertexFile(hypergraph, context.partition.fixed_vertex_filename);
@@ -215,7 +237,29 @@ int main(int argc, char* argv[]) {
     kahypar::io::printPartitioningResults(hypergraph, context, elapsed_seconds);
     LOG << "";
   }
+
+  LOG << "=====> Writing dual hypergraph partition file: " << context.partition.graph_partition_filename + ".dual.partition";
   kahypar::io::writePartitionFile(hypergraph,
+                                  context.partition.graph_partition_filename + ".dual.partition");
+
+
+  for (const auto he : hypergraph.edges()) {
+    if (hypergraph.connectivity(he) == 1) {
+      original_hypergraph.setNodePart(he, *hypergraph.connectivitySet(he).begin());
+    }
+  }
+
+  for (const auto removed_he : removed_parallel_hes) {
+    if (hypergraph.connectivity(removed_he.second) == 1) {
+      // LOG << V(removed_he.first) << ":" << V(original_hypergraph.partID(removed_he.first));
+      original_hypergraph.setNodePart(removed_he.first, *hypergraph.connectivitySet(removed_he.second).begin());
+      // LOG << V(removed_he.first) << ":" << V(original_hypergraph.partID(removed_he.first));
+    }
+  }
+
+
+  LOG << "=====> Writing original hypergraph partition file: " << context.partition.graph_partition_filename;
+  kahypar::io::writePartitionFile(original_hypergraph,
                                   context.partition.graph_partition_filename);
 
   // In case a time limit is used, the last partitioning step is already serialized
