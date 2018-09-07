@@ -40,10 +40,24 @@ using HyperedgeWeight = int32_t;
 using PartitionID = int32_t;
 using Gain = HyperedgeWeight;
 
+// using Hypergraph = kahypar::ds::GenericHypergraph<HypernodeID,
+//                                                   HyperedgeID, HypernodeWeight,
+//                                                   HyperedgeWeight, PartitionID>;
+struct HEData {
+  PartitionID label;
+};
+
+struct HNData {
+  PartitionID label;
+};
+
+
 using Hypergraph = kahypar::ds::GenericHypergraph<HypernodeID,
                                                   HyperedgeID, HypernodeWeight,
-                                                  HyperedgeWeight, PartitionID>;
-
+                                                  HyperedgeWeight,
+                                                  PartitionID,
+                                                  HNData,
+                                                  HEData>;
 using RatingType = double;
 using HypergraphType = Hypergraph::Type;
 using HyperedgeIndexVector = Hypergraph::HyperedgeIndexVector;

@@ -680,7 +680,7 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
     + epsilon_str
     + ".seed"
     + std::to_string(context.partition.seed)
-    + ".KaHyPar";
+    + ".LPP";
 
   if (context.partition.use_individual_part_weights) {
     context.partition.epsilon = 0;
