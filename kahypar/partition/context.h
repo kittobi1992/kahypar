@@ -305,6 +305,7 @@ struct PartitioningParameters {
   PartitionID rb_lower_k = 0;
   PartitionID rb_upper_k = 0;
   int seed = 0;
+  int iterations = 1;
   uint32_t global_search_iterations = std::numeric_limits<uint32_t>::max();
   int time_limit = 0;
 

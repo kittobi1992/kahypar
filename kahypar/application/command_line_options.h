@@ -70,6 +70,10 @@ po::options_description createGeneralOptionsDescription(Context& context, const 
     po::value<int>(&context.partition.seed)->value_name("<int>"),
     "Seed for random number generator \n"
     "(default: -1)")
+    ("iterations",
+    po::value<int>(&context.partition.iterations)->value_name("<int>"),
+    "LPP \n"
+    "(default: 1)")
     ("fixed-vertices,f",
     po::value<std::string>(&context.partition.fixed_vertex_filename)->value_name("<string>"),
     "Fixed vertex filename")

@@ -96,10 +96,15 @@ int main(int argc, char* argv[]) {
   HyperedgeWeight current_cut = std::numeric_limits<HyperedgeWeight>::max();
   HyperedgeWeight best_cut = std::numeric_limits<HyperedgeWeight>::max();
 
+  std::vector<PartitionID> best_partition(hypergraph.initialNumNodes(), -1);
+
   // TODO: Try iterating in increasing order of degree/net size
 
   do {
-    best_cut = current_cut;
+    if (current_cut < best_cut) {
+      best_cut = current_cut;
+    }
+
     ASSERT(iteration == 0 || part_arities[context.partition.k] == 0);
     /////////////////////////////////////////////////////////////////
     // STEP 1: Update hyperedge labels
@@ -196,7 +201,13 @@ int main(int argc, char* argv[]) {
     kahypar::io::printObjectives(hypergraph, context);
     current_cut = kahypar::metrics::hyperedgeCut(hypergraph);
     ++iteration;
-  } while (current_cut != best_cut);
+
+    if (current_cut < best_cut) {
+      for (const auto hn :  hypergraph.nodes()) {
+        best_partition[hn] = hypergraph.partID(hn);
+      }
+    }
+  } while (current_cut != best_cut && iteration < context.partition.iterations);
 
   const HighResClockTimepoint complete_end = std::chrono::high_resolution_clock::now();
 
@@ -206,12 +217,19 @@ int main(int argc, char* argv[]) {
   LOG << "*                          FINAL Partitioning Result                           *";
   LOG << "********************************************************************************";
   for (const auto hn : hypergraph.nodes()) {
+    if (hypergraph.partID(hn) != best_partition[hn]) {
+      hypergraph.changeNodePart(hn,hypergraph.partID(hn),best_partition[hn]);
+    }
+  }
+
+  for (const auto hn : hypergraph.nodes()) {
     ASSERT(std::any_of(hypergraph.incidentEdges(hn).first,
                        hypergraph.incidentEdges(hn).second,
                        [&](const kahypar::HyperedgeID he) {
                          return hypergraph.hyperedgeData(he).label == hypergraph.partID(hn);
                        }), "");
   }
+  kahypar::io::printObjectives(hypergraph, context);
 
   LOG << "#########################################################################";
   LOG << "Evaluation based on labels";
