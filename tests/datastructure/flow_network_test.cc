@@ -49,13 +49,13 @@ class FlowNetworkTest : public ::testing::TestWithParam<std::pair<NodeID, std::s
  public:
   FlowNetworkTest() :
     context(),
-    hypergraph(10, 7, HyperedgeIndexVector { 0, 5, 7, 9, 11, 14, 16, 18 },
-               HyperedgeVector { 0, 1, 2, 3, 4, 4, 5, 5, 6, 5, 7, 5, 6, 7, 6, 8, 7, 9 }),
+    hypergraph(10, 8, HyperedgeIndexVector { 0, 5, 7, 9, 11, 14, 16, 18, 21 },
+               HyperedgeVector { 0, 1, 2, 3, 4, 4, 5, 5, 6, 5, 7, 5, 6, 7, 6, 8, 7, 9, 5, 8, 9 }),
     flowNetwork(hypergraph, context) { }
 
   void setupFlowNetwork() {
-    std::vector<HypernodeID> block0 = { 0, 2, 4, 9 };
-    std::vector<HypernodeID> block1 = { 1, 3, 5, 6, 7, 8 };
+    std::vector<HypernodeID> block0 = { 0, 1, 2, 4, 9 };
+    std::vector<HypernodeID> block1 = { 3, 5, 6, 7, 8 };
     for (const HypernodeID& hn : block0) {
       hypergraph.setNodePart(hn, 0);
     }
@@ -116,7 +116,7 @@ TEST_F(BasicFlowNetworkTest, FlowNetworkStats) {
   ASSERT_EQ(35, flowNetwork.numEdges());
   ASSERT_EQ(7, flowNetwork.totalWeightHyperedges());
   ASSERT_EQ(0, flowNetwork.numUndirectedEdges());
-  ASSERT_EQ(24, flowNetwork.initialSize());
+  ASSERT_EQ(26, flowNetwork.initialSize());
 }
 
 // ###################### Lawler Flow Network Test ######################
@@ -125,7 +125,7 @@ using LawlerNetworkTest = FlowNetworkTest<LawlerNetwork>;
 
 TEST_F(LawlerNetworkTest, NodesInFlowProblem) {
   setupFlowNetwork();
-  std::set<NodeID> nodes = { 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 };
+  std::set<NodeID> nodes = { 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24 };
   size_t num_nodes = 0;
   for (const NodeID node : flowNetwork.nodes()) {
     ASSERT_TRUE(nodes.find(node) != nodes.end());
@@ -143,12 +143,12 @@ INSTANTIATE_TEST_CASE_P(LawlerNetworkStructure,
                                                                              EDGE(12, LawlerNetwork::kInfty),
                                                                              EDGE(13, LawlerNetwork::kInfty),
                                                                              EDGE(14, LawlerNetwork::kInfty) })),
-                                          std::make_pair(10, std::set<edge>({ EDGE(17, 1) })),
-                                          std::make_pair(17, std::set<edge>({ EDGE(2, LawlerNetwork::kInfty),
+                                          std::make_pair(10, std::set<edge>({ EDGE(18, 1) })),
+                                          std::make_pair(18, std::set<edge>({ EDGE(2, LawlerNetwork::kInfty),
                                                                               EDGE(3, LawlerNetwork::kInfty),
                                                                               EDGE(4, LawlerNetwork::kInfty) })),
-                                          std::make_pair(14, std::set<edge>({ EDGE(21, 1) })),
-                                          std::make_pair(21, std::set<edge>({ EDGE(5, LawlerNetwork::kInfty),
+                                          std::make_pair(14, std::set<edge>({ EDGE(22, 1) })),
+                                          std::make_pair(22, std::set<edge>({ EDGE(5, LawlerNetwork::kInfty),
                                                                               EDGE(6, LawlerNetwork::kInfty),
                                                                               EDGE(7, LawlerNetwork::kInfty) }))));
 
@@ -162,7 +162,7 @@ TEST_P(LawlerNetworkTest, IncidentEdgesOfANode) {
 TEST_F(LawlerNetworkTest, SourceAndSinkSetup) {
   setupFlowNetwork();
   testSourcesAndSinks({ INCOMING(0), INCOMING(6) },
-                      { OUTGOING(0), OUTGOING(5) });
+                      { OUTGOING(5) });
 }
 
 // ###################### Heuer Flow Network Test ######################
@@ -171,7 +171,7 @@ using HeuerNetworkTest = FlowNetworkTest<HeuerNetwork>;
 
 TEST_F(HeuerNetworkTest, NodesInFlowProblem) {
   setupFlowNetwork();
-  std::set<NodeID> nodes = { 5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 };
+  std::set<NodeID> nodes = { 5, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24 };
   size_t num_nodes = 0;
   for (const NodeID node : flowNetwork.nodes()) {
     ASSERT_TRUE(nodes.find(node) != nodes.end());
@@ -182,19 +182,19 @@ TEST_F(HeuerNetworkTest, NodesInFlowProblem) {
 
 INSTANTIATE_TEST_CASE_P(HeuerNetworkStructure,
                         HeuerNetworkTest,
-                        ::testing::Values(std::make_pair(10, std::set<edge>({ EDGE(17, 1) })),
-                                          std::make_pair(17, std::set<edge>({ EDGE(11, HeuerNetwork::kInfty) })),
-                                          std::make_pair(11, std::set<edge>({ EDGE(18, 1) })),
+                        ::testing::Values(std::make_pair(10, std::set<edge>({ EDGE(18, 1) })),
+                                          std::make_pair(18, std::set<edge>({ EDGE(11, HeuerNetwork::kInfty) })),
+                                          std::make_pair(11, std::set<edge>({ EDGE(19, 1) })),
                                           std::make_pair(5, std::set<edge>({ EDGE(11, HeuerNetwork::kInfty),
                                                                              EDGE(12, HeuerNetwork::kInfty),
                                                                              EDGE(13, HeuerNetwork::kInfty),
                                                                              EDGE(14, HeuerNetwork::kInfty) })),
-                                          std::make_pair(21, std::set<edge>({ EDGE(5, HeuerNetwork::kInfty),
+                                          std::make_pair(22, std::set<edge>({ EDGE(5, HeuerNetwork::kInfty),
                                                                               EDGE(12, HeuerNetwork::kInfty),
                                                                               EDGE(13, HeuerNetwork::kInfty),
                                                                               EDGE(15, HeuerNetwork::kInfty),
                                                                               EDGE(16, HeuerNetwork::kInfty) })),
-                                          std::make_pair(22, std::set<edge>({ EDGE(12, HeuerNetwork::kInfty),
+                                          std::make_pair(23, std::set<edge>({ EDGE(12, HeuerNetwork::kInfty),
                                                                               EDGE(14, HeuerNetwork::kInfty) }))));
 
 TEST_P(HeuerNetworkTest, IncidentEdgesOfANode) {
@@ -207,7 +207,7 @@ TEST_P(HeuerNetworkTest, IncidentEdgesOfANode) {
 TEST_F(HeuerNetworkTest, SourceAndSinkSetup) {
   setupFlowNetwork();
   testSourcesAndSinks({ INCOMING(0), INCOMING(6) },
-                      { OUTGOING(0), OUTGOING(5) });
+                      { OUTGOING(5) });
 }
 
 // ###################### Wong Flow Network Test ######################
@@ -216,7 +216,7 @@ using WongNetworkTest = FlowNetworkTest<WongNetwork>;
 
 TEST_F(WongNetworkTest, NodesInFlowProblem) {
   setupFlowNetwork();
-  std::set<NodeID> nodes = { 2, 3, 4, 5, 6, 7, 10, 14, 16, 17, 21, 22 };
+  std::set<NodeID> nodes = { 2, 3, 4, 5, 6, 7, 10, 14, 16, 18, 22, 23 };
   size_t num_nodes = 0;
   for (const NodeID node : flowNetwork.nodes()) {
     ASSERT_TRUE(nodes.find(node) != nodes.end());
@@ -234,10 +234,10 @@ INSTANTIATE_TEST_CASE_P(WongNetworkStructure,
                                                                              EDGE(7, 1),
                                                                              EDGE(14, WongNetwork::kInfty) })),
                                           std::make_pair(16, std::set<edge>({ EDGE(7, 1) })),
-                                          std::make_pair(17, std::set<edge>({ EDGE(2, WongNetwork::kInfty),
+                                          std::make_pair(18, std::set<edge>({ EDGE(2, WongNetwork::kInfty),
                                                                               EDGE(3, WongNetwork::kInfty),
                                                                               EDGE(4, WongNetwork::kInfty) })),
-                                          std::make_pair(21, std::set<edge>({ EDGE(5, WongNetwork::kInfty),
+                                          std::make_pair(22, std::set<edge>({ EDGE(5, WongNetwork::kInfty),
                                                                               EDGE(6, WongNetwork::kInfty),
                                                                               EDGE(7, WongNetwork::kInfty) }))));
 
@@ -251,7 +251,7 @@ TEST_P(WongNetworkTest, IncidentEdgesOfANode) {
 TEST_F(WongNetworkTest, SourceAndSinkSetup) {
   setupFlowNetwork();
   testSourcesAndSinks({ INCOMING(0), INCOMING(6) },
-                      { OUTGOING(0), OUTGOING(5) });
+                      { OUTGOING(5) });
 }
 
 // ###################### Hybrid Flow Network Test ######################
@@ -260,7 +260,7 @@ using HybridNetworkTest = FlowNetworkTest<HybridNetwork>;
 
 TEST_F(HybridNetworkTest, NodesInFlowProblem) {
   setupFlowNetwork();
-  std::set<NodeID> nodes = { 4, 5, 6, 7, 10, 14, 16, 17, 21, 22 };
+  std::set<NodeID> nodes = { 4, 5, 6, 7, 10, 14, 16, 18, 22, 23 };
   size_t num_nodes = 0;
   for (const NodeID node : flowNetwork.nodes()) {
     ASSERT_TRUE(nodes.find(node) != nodes.end());
@@ -278,8 +278,8 @@ INSTANTIATE_TEST_CASE_P(HybridNetworkStructure,
                                                                              EDGE(7, 1),
                                                                              EDGE(14, HybridNetwork::kInfty) })),
                                           std::make_pair(16, std::set<edge>({ EDGE(7, 1) })),
-                                          std::make_pair(17, std::set<edge>({ EDGE(4, HybridNetwork::kInfty) })),
-                                          std::make_pair(21, std::set<edge>({ EDGE(5, HybridNetwork::kInfty),
+                                          std::make_pair(18, std::set<edge>({ EDGE(4, HybridNetwork::kInfty) })),
+                                          std::make_pair(22, std::set<edge>({ EDGE(5, HybridNetwork::kInfty),
                                                                               EDGE(6, HybridNetwork::kInfty),
                                                                               EDGE(7, HybridNetwork::kInfty) }))));
 
@@ -293,6 +293,6 @@ TEST_P(HybridNetworkTest, IncidentEdgesOfANode) {
 TEST_F(HybridNetworkTest, SourceAndSinkSetup) {
   setupFlowNetwork();
   testSourcesAndSinks({ INCOMING(0), INCOMING(6) },
-                      { OUTGOING(0), OUTGOING(5) });
+                      { OUTGOING(5) });
 }
 }  // namespace kahypar

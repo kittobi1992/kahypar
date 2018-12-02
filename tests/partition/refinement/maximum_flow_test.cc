@@ -51,8 +51,8 @@ class AMaximumFlow : public Test {
     maximumFlow(hypergraph, context, flowNetwork) { }
 
   void setupFlowNetwork() {
-    std::vector<HypernodeID> block0 = { 0, 2, 4, 9 };
-    std::vector<HypernodeID> block1 = { 1, 3, 5, 6, 7, 8 };
+    std::vector<HypernodeID> block0 = { 0, 1, 2, 4, 9 };
+    std::vector<HypernodeID> block1 = { 3, 5, 6, 7, 8 };
     for (const HypernodeID& hn : block0) {
       hypergraph.setNodePart(hn, 0);
     }
@@ -131,7 +131,7 @@ TYPED_TEST(AMaximumFlow, AugmentAlongPath) {
 TYPED_TEST(AMaximumFlow, CalculationOnASubhypergraph) {
   this->setupFlowNetwork();
   Flow f = this->maximumFlow.maximumFlow();
-  ASSERT_EQ(f, 2);
+  ASSERT_EQ(f, 1);
 }
 
 TYPED_TEST(AMaximumFlow, MultiExecution) {
@@ -139,7 +139,7 @@ TYPED_TEST(AMaximumFlow, MultiExecution) {
     this->flowNetwork.reset();
     this->setupFlowNetwork();
     Flow f = this->maximumFlow.maximumFlow();
-    ASSERT_EQ(f, 2);
+    ASSERT_EQ(f, 1);
     this->hypergraph.resetPartitioning();
   }
 }
@@ -153,8 +153,8 @@ TYPED_TEST(AMaximumFlow, FindMinimumSTCut) {
 
 TYPED_TEST(AMaximumFlow, RollbackAfterMinimumSTCut) {
   this->context.local_search.flow.use_most_balanced_minimum_cut = false;
-  std::vector<PartitionID> part_before = { 0, 1, 0, 1, 0, 1, 1, 1, 1, 0 };
-  std::vector<PartitionID> part_after = { 0, 1, 0, 1, 1, 1, 1, 1, 1, 0 };
+  std::vector<PartitionID> part_before = { 0, 0, 0, 1, 0, 1, 1, 1, 1, 0 };
+  std::vector<PartitionID> part_after = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 };
   this->setupFlowNetwork();
   HyperedgeWeight cut = this->maximumFlow.minimumSTCut(0, 1);
   ASSERT_EQ(metrics::hyperedgeCut(this->hypergraph), cut);
